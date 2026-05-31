@@ -1,0 +1,12 @@
+col_span: '1'
+col_span_lg: '1'
+col_span_xl: '1'
+entities:
+- sensor.backup_backup_manager_state
+- switch.lgtv
+- sensor.easypass_balance
+position: top
+row_span: '1'
+row_span_lg: '1'
+row_span_xl: '1'
+type: entities

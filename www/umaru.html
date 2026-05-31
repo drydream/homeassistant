@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="normal" />
+<title>Umaru</title>
+<script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+<style>
+  :root, html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent !important;
+    background-color: transparent !important;
+    overflow: hidden;
+  }
+  model-viewer {
+    width: 100%;
+    height: 100%;
+    background: transparent !important;
+    background-color: transparent !important;
+    --poster-color: transparent;
+    --progress-bar-color: transparent;
+    --progress-bar-height: 0px;
+  }
+  model-viewer::part(default-canvas),
+  model-viewer::part(default-progress-bar),
+  model-viewer::part(default-progress-mask) {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+  canvas { background: transparent !important; }
+</style>
+</head>
+<body>
+<model-viewer
+  id="umaru"
+  src="/local/umaru.glb"
+  alt="Umaru-chan"
+  disable-zoom
+  disable-pan
+  interaction-prompt="none"
+  shadow-intensity="0"
+  exposure="1.0"
+  field-of-view="30deg"
+  camera-orbit="0deg 80deg auto"
+  reveal="auto"
+  loading="eager">
+</model-viewer>
+<script>
+  const mv = document.getElementById('umaru');
+
+  const YAW_RANGE   = 45;
+  const PITCH_RANGE = 18;
+  const PITCH_BASE  = 80;
+  const LERP        = 0.10;
+  const RADIUS      = 'auto';
+
+  let targetYaw = 0, targetPitch = PITCH_BASE;
+  let curYaw = 0,    curPitch = PITCH_BASE;
+
+  function setTargetFromClient(cx, cy) {
+    const w = window.innerWidth  || document.documentElement.clientWidth;
+    const h = window.innerHeight || document.documentElement.clientHeight;
+    const nx = (cx / w) * 2 - 1;
+    const ny = (cy / h) * 2 - 1;
+    targetYaw   = -nx * YAW_RANGE;
+    targetPitch = PITCH_BASE - ny * PITCH_RANGE;
+  }
+
+  window.addEventListener('mousemove',   (e) => setTargetFromClient(e.clientX, e.clientY));
+  window.addEventListener('pointermove', (e) => setTargetFromClient(e.clientX, e.clientY));
+  window.addEventListener('touchmove', (e) => {
+    if (e.touches && e.touches[0]) setTargetFromClient(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (d && d.type === 'umaru-mouse') setTargetFromClient(d.x, d.y);
+  });
+
+  let lastMove = performance.now();
+  ['mousemove','pointermove','touchmove','message'].forEach(ev =>
+    window.addEventListener(ev, () => lastMove = performance.now(), { passive: true })
+  );
+
+  function tick(now) {
+    if (now - lastMove > 4000) {
+      targetYaw   *= 0.985;
+      targetPitch = PITCH_BASE + (targetPitch - PITCH_BASE) * 0.985;
+    }
+    curYaw   += (targetYaw   - curYaw)   * LERP;
+    curPitch += (targetPitch - curPitch) * LERP;
+    mv.cameraOrbit = `${curYaw}deg ${curPitch}deg ${RADIUS}`;
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  // Force canvas to alpha-blend transparent once loaded.
+  mv.addEventListener('load', () => {
+    const cv = mv.shadowRoot && mv.shadowRoot.querySelector('canvas');
+    if (cv) {
+      cv.style.background = 'transparent';
+      cv.style.backgroundColor = 'transparent';
+    }
+  });
+</script>
+</body>
+</html>

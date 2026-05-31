@@ -1,0 +1,38 @@
+# --- Home Assistant Core Files ---
+secrets.yaml
+.HA_VERSION
+.ha_run.lock
+*.log*
+
+# --- Databases & Large Files ---
+home-assistant_v2.db*
+
+# ❗ เอาออกแล้ว (เพื่อ backup จริง)
+# zigbee.db*
+
+backups/
+tts/
+
+# --- System & Cache ---
+__pycache__/
+*.pyc
+.DS_Store
+
+.storage/
+
+# --- Components ---
+custom_components/hacs/
+# ❗ เก็บ tuya_local
+# custom_components/tuya_local/
+
+# --- Dashboard & Brand Caches ---
+.cache/
+dwains-dashboard/configs/cards/areas/living_room/CRVMZ2~X
+
+# --- Tooling & AI Config ---
+.claude/
+.vscode/
+.idea/
+
+# --- Optional (ถ้ามี temp จริงค่อยใช้)
+# www/tmp/'.storage/' 

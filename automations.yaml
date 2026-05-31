@@ -1,0 +1,205 @@
+- id: '1749205384715'
+  alias: turn on tv
+  description: ''
+  triggers:
+  - device_id: 8796df8a898a9c6f970d84ea1ff0fb78
+    domain: webostv
+    type: webostv.turn_on
+    trigger: device
+  conditions: []
+  actions:
+  - action: wake_on_lan.send_magic_packet
+    metadata: {}
+    data:
+      mac: 58:fd:b1:c6:57:bf
+      broadcast_port: 9
+      broadcast_address: 255.255.255.255
+  mode: single
+- id: '1751213041695'
+  alias: เปิดไฟหน้าบ้าน
+  description: เปิดไฟกลางบ้านเมื่อ drydream หรือ rella_naey กลับบ้านช่วงกลางคืน
+  triggers:
+  - entity_id:
+    - person.drydream
+    from:
+    to: home
+    trigger: state
+  - entity_id:
+    - person.rella_naey
+    from:
+    to: home
+    trigger: state
+  conditions:
+  - condition: time
+    after: '18:00:00'
+    before: 06:00:00
+    weekday:
+    - sun
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+    - sat
+  actions:
+  - target:
+      entity_id: switch.aifaethwlaangh_ngnangeln_l2
+    action: switch.turn_on
+    data: {}
+  - delay: 00:05:00
+  - target:
+      entity_id: switch.aifaethwlaangh_ngnangeln_l2
+    action: switch.turn_off
+    data: {}
+  mode: single
+- id: '1753415997879'
+  alias: 'ปุ่มหน้าบ้าน: เปิดรั้วนิดเดียว'
+  description: เมื่อกดปุ่ม รั้ว จะทำให้เปิดรั้วนิดเดียว
+  triggers:
+  - topic: zigbee2mqtt/ปุ่มรั้ว/action
+    payload: button_1_single
+    trigger: mqtt
+  actions:
+  - action: script.open_door_for_4_seconds
+    data: {}
+  mode: single
+- id: '1753416368041'
+  alias: 'ปุ่มหน้าบ้าน: ปิดรั้ว'
+  description: ''
+  triggers:
+  - trigger: mqtt
+    topic: zigbee2mqtt/ปุ่มรั้ว/action
+    payload: button_2_single
+  conditions: []
+  actions:
+  - service: button.press
+    target:
+      entity_id: button.gate_controller_close
+  mode: single
+- id: '1753416455933'
+  alias: 'ปุ่มหน้าบ้าน: เปิดรั้ว'
+  description: ''
+  triggers:
+  - trigger: mqtt
+    topic: zigbee2mqtt/ปุ่มรั้ว/action
+    payload: button_1_hold
+  conditions: []
+  actions:
+  - service: button.press
+    target:
+      entity_id: button.gate_controller_open
+  mode: single
+- id: '1755242476717'
+  alias: เปิดรั้วนิดเดียว(siri)
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_boolean.fench_open_short_siri
+    to: 'on'
+  action:
+  - service: script.turn_on
+    target:
+      entity_id: script.open_door_for_4_seconds
+  - delay: 00:00:01
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.fench_open_short_siri
+- id: '1755655355514'
+  alias: ไฟบันไดใหม่
+  description: ''
+  use_blueprint:
+    path: champ/link_multiple_devices.yaml
+    input:
+      linked_entities:
+      - switch.aifbanaidchanbn
+      - switch.aifbanaidchanlaang_l1
+- id: '1755655465739'
+  alias: ห้องน้ำใหม่
+  description: ''
+  use_blueprint:
+    path: champ/link_multiple_devices.yaml
+    input:
+      linked_entities:
+      - switch.aifh_ngn_n_l4
+      - switch.h_ngnmaa_l1
+- id: '1755655587190'
+  alias: ห้องนอนใหม่
+  description: ''
+  use_blueprint:
+    path: champ/link_multiple_devices.yaml
+    input:
+      linked_entities:
+      - switch.aifetiiyng
+      - switch.aifh_ngn_n_l3
+      debounce_seconds: 0
+- id: '1755656000001'
+  alias: ห้องน้ำ L1 → L2 ดีเลย์ 1 วิ
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: switch.h_ngnmaa_l1
+    to:
+    - 'on'
+    - 'off'
+  condition:
+  - condition: template
+    value_template: '{{ states(''switch.h_ngnmaa_l2'') != trigger.to_state.state }}'
+  action:
+  - delay: 00:00:01
+  - service: homeassistant.turn_{{ trigger.to_state.state }}
+    target:
+      entity_id: switch.h_ngnmaa_l2
+- id: '1756394707954'
+  alias: ตั้งเวลาเปิดไฟห้องนอน
+  description: เปิดไฟห้องนอนเวลา
+  triggers:
+  - at: 04:50:00
+    trigger: time
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+  actions:
+  - target:
+      entity_id: switch.aifh_ngn_n_l1
+    action: switch.turn_on
+    data: {}
+  mode: single
+- id: '1756394707955'
+  alias: เปิด L2 เมื่อเจอการเคลื่อนไหว
+  description: ''
+  triggers:
+  - entity_id: binary_sensor.motion1_presence
+    to: 'on'
+    trigger: state
+  actions:
+  - action: switch.turn_on
+    data: {}
+    target:
+      entity_id: switch.aifh_ngkhraw
+  mode: restart
+- id: '1756394707956'
+  alias: ปิด L2 เมื่อไม่มีการเคลื่อนไหว 30 วินาที
+  description: ''
+  triggers:
+  - entity_id: binary_sensor.motion1_presence
+    to: 'off'
+    for: 00:00:30
+    trigger: state
+  actions:
+  - action: switch.turn_off
+    data: {}
+    target:
+      entity_id: switch.aifh_ngkhraw
+  mode: single
+- id: '1769596784656'
+  alias: ไฟห้องน้ำชั้นล่าง
+  description: ''
+  use_blueprint:
+    path: gist.githubusercontent.com/link_multiple_devices.yaml
+    input:
+      linked_entities:
+      - switch.h_ngnmaachanlaang_left
+      - switch.h_ngnmaachanlaang_right

@@ -1,0 +1,97 @@
+open_door_for_4_seconds:
+  alias: เปิดรั้วนิดเดียว
+  mode: single
+  sequence:
+  - service: button.press
+    target:
+      entity_id: button.gate_controller_open
+  - delay: 00:00:05
+  - service: button.press
+    target:
+      entity_id: button.gate_controller_stop
+add_calendar_note:
+  alias: add_calendar_note
+  mode: single
+  sequence:
+  - target:
+      entity_id: calendar.drydream_event_s
+    data:
+      summary: '{{ states(''input_text.note_text'') }}'
+      description: '{% set d = states(''input_text.note_description'') %} {{ ''''
+        if d in [''unknown'',''None''] else d }}
+
+        '
+      start_date: '{{ states(''input_datetime.note_date'')[:10] }}'
+      end_date: '{{ (strptime(states(''input_datetime.note_date'')[:10], ''%Y-%m-%d'')
+        + timedelta(days=1)).strftime(''%Y-%m-%d'') }}
+
+        '
+    action: calendar.create_event
+  - target:
+      entity_id: input_text.note_text
+    data:
+      value: ''
+    action: input_text.set_value
+  - target:
+      entity_id: input_text.note_description
+    data:
+      value: ''
+    action: input_text.set_value
+  - target:
+      entity_id: input_datetime.note_date
+    data:
+      date: '{{ now().strftime(''%Y-%m-%d'') }}'
+    action: input_datetime.set_datetime
+delete_calendar_event:
+  alias: delete_calendar_event
+  mode: single
+  fields:
+    event_id:
+      description: ID ของ event
+  sequence:
+  - target:
+      entity_id: calendar.my_calendar
+    data:
+      event_id: '{{ event_id }}'
+    action: calendar.delete_event
+  description: ''
+load_event_for_edit:
+  alias: โหลดกิจกรรมเพื่อแก้ไข
+  mode: single
+  fields:
+    event_index:
+      description: ลำดับกิจกรรมในรายการที่กรองแล้ว (เริ่มจาก 0)
+      selector:
+        number:
+          min: 0
+          max: 49
+  sequence:
+    - variables:
+        the_event: >
+          {% set year_filter = states('input_select.calendar_year_filter') %}
+          {% set month_filter = states('input_select.calendar_month_filter') %}
+          {% set all_evts = state_attr('sensor.calendar_events_list', 'events') | sort(attribute='start') %}
+          {% set ns = namespace(items=[]) %}
+          {% for e in all_evts %}
+            {% set yr = as_timestamp(e.start, 0) | timestamp_custom('%Y', true) %}
+            {% set mn = as_timestamp(e.start, 0) | timestamp_custom('%B', true) %}
+            {% if (year_filter == 'All' or yr == year_filter) and (month_filter == 'All' or mn == month_filter) %}
+              {% set ns.items = ns.items + [e] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.items[event_index | int] }}
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.note_text
+      data:
+        value: "{{ the_event.summary }}"
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.note_description
+      data:
+        value: "{{ the_event.description | default('') }}"
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.note_date
+      data:
+        date: "{{ the_event.start[:10] }}"

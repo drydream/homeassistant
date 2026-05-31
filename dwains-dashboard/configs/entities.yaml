@@ -1,0 +1,162 @@
+media_player.lg_webos_tv_65un7200ptf:
+  hidden: true
+button.c225_reboot:
+  hidden: true
+button.c225_set_system_date_and_time:
+  hidden: true
+camera.c225_mainstream:
+  hidden: true
+switch.c225_autofocus:
+  hidden: true
+switch.c225_ir_lamp:
+  hidden: true
+switch.c225_wiper:
+  hidden: true
+camera.tapo_c225_2a63_hd_stream:
+  hidden: true
+camera.tapo_c225_2a63_sd_stream:
+  hidden: true
+button.tapo_c225_2a63_reboot:
+  hidden: true
+button.tapo_c225_2a63_format_sd_card:
+  hidden: true
+button.tapo_c225_2a63_manual_alarm_start:
+  hidden: true
+button.tapo_c225_2a63_manual_alarm_stop:
+  hidden: true
+button.tapo_c225_2a63_sync_time:
+  hidden: true
+button.tapo_c225_2a63_calibrate:
+  hidden: true
+button.tapo_c225_2a63_move_up:
+  hidden: true
+button.tapo_c225_2a63_move_down:
+  hidden: true
+button.tapo_c225_2a63_move_right:
+  hidden: true
+button.tapo_c225_2a63_move_left:
+  hidden: true
+number.tapo_c225_2a63_movement_angle:
+  hidden: true
+number.tapo_c225_2a63_motion_detection_digital_sensitivity:
+  hidden: true
+number.tapo_c225_2a63_microphone_volume:
+  hidden: true
+number.tapo_c225_2a63_speaker_volume:
+  hidden: true
+number.tapo_c225_2a63_siren_volume:
+  hidden: true
+number.tapo_c225_2a63_siren_duration:
+  hidden: true
+number.tapo_c225_2a63_spotlight_intensity:
+  hidden: true
+select.tapo_c225_2a63_timezone:
+  hidden: true
+select.tapo_c225_2a63_night_vision_switching:
+  hidden: true
+select.tapo_c225_2a63_night_vision:
+  hidden: true
+select.tapo_c225_2a63_light_frequency:
+  hidden: true
+select.tapo_c225_2a63_automatic_alarm:
+  hidden: true
+select.tapo_c225_2a63_siren_type:
+  hidden: true
+select.tapo_c225_2a63_motion_detection:
+  hidden: true
+select.tapo_c225_2a63_person_detection:
+  hidden: true
+select.tapo_c225_2a63_vehicle_detection:
+  hidden: true
+select.tapo_c225_2a63_baby_cry_detection:
+  hidden: true
+select.tapo_c225_2a63_pet_detection:
+  hidden: true
+select.tapo_c225_2a63_bark_detection:
+  hidden: true
+select.tapo_c225_2a63_meow_detection:
+  hidden: true
+select.tapo_c225_2a63_glass_break_detection:
+  hidden: true
+select.tapo_c225_2a63_tamper_detection:
+  hidden: true
+select.tapo_c225_2a63_move_to_preset:
+  hidden: true
+select.tapo_c225_2a63_patrol_mode:
+  hidden: true
+select.tapo_c225_2a63_spotlight_on_off_for:
+  hidden: true
+siren.tapo_c225_2a63_siren:
+  hidden: true
+sensor.tapo_c225_2a63_network_ssid:
+  hidden: true
+sensor.tapo_c225_2a63_link_type:
+  hidden: true
+sensor.tapo_c225_2a63_rssi:
+  hidden: true
+sensor.tapo_c225_2a63_recordings_synchronization:
+  hidden: true
+switch.tapo_c225_2a63_privacy:
+  hidden: true
+switch.tapo_c225_2a63_trigger_alarm_on_people_detection:
+  hidden: true
+switch.tapo_c225_2a63_trigger_alarm_on_vehicle_detection:
+  hidden: true
+switch.tapo_c225_2a63_trigger_alarm_on_pet_detection:
+  hidden: true
+switch.tapo_c225_2a63_trigger_alarm_on_sound_detection:
+  hidden: true
+switch.tapo_c225_2a63_trigger_alarm_on_bark_detection:
+  hidden: true
+switch.tapo_c225_2a63_trigger_alarm_on_meow_detection:
+  hidden: true
+switch.tapo_c225_2a63_trigger_alarm_on_glass_detection:
+  hidden: true
+switch.tapo_c225_2a63_trigger_alarm_on_alarm_detection:
+  hidden: true
+switch.tapo_c225_2a63_trigger_alarm_on_motion_detection:
+  hidden: true
+switch.tapo_c225_2a63_trigger_alarm_on_tamper_detection:
+  hidden: true
+switch.tapo_c225_2a63_trigger_alarm_on_linecrossing_detection:
+  hidden: true
+switch.tapo_c225_2a63_media_sync:
+  hidden: true
+switch.tapo_c225_2a63_lens_distortion_correction:
+  hidden: true
+switch.tapo_c225_2a63_indicator_led:
+  hidden: true
+switch.tapo_c225_2a63_record_audio:
+  hidden: true
+switch.tapo_c225_2a63_diagnose_mode:
+  hidden: true
+switch.tapo_c225_2a63_smart_track_people:
+  hidden: true
+switch.tapo_c225_2a63_smart_track_pet:
+  hidden: true
+switch.tapo_c225_2a63_smart_track_vehicle:
+  hidden: true
+switch.tapo_c225_2a63_privacy_zones:
+  hidden: true
+switch.tapo_c225_2a63_flip:
+  hidden: true
+switch.tapo_c225_2a63_auto_track:
+  hidden: true
+switch.tapo_c225_2a63_notifications:
+  hidden: true
+switch.tapo_c225_2a63_rich_notifications:
+  hidden: true
+switch.tapo_c225_2a63_automatically_upgrade_firmware:
+  hidden: true
+switch.tapo_c225_2a63_record_to_sd_card:
+  hidden: true
+switch.tapo_c225_2a63_microphone_mute:
+  hidden: true
+switch.tapo_c225_2a63_microphone_noise_cancellation:
+  hidden: true
+switch.tapo_c225_2a63_hdr:
+  hidden: true
+light.tapo_c225_2a63_floodlight_timed:
+  hidden: true
+update.tapo_c225_2a63_update:
+  hidden: true

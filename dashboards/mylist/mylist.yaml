@@ -1,0 +1,9 @@
+title: "My List"
+views:
+  - title: "My List"
+    path: mylist
+    type: panel
+    cards:
+      - type: iframe
+        url: https://mydrydreamlistnew.vercel.app/
+        aspect_ratio: "100%"

@@ -1,0 +1,334 @@
+homeassistant:
+  packages: !include_dir_named packages
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Wake-on-LAN service (required for WoL)
+wake_on_lan:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 192.168.1.170
+
+# ===== Template entities (switch + sensor + cover + binary_sensor) =====
+template:
+  - switch:
+      - name: "ทีวีห้องนั่งเล่น"
+        unique_id: lg_tv_power_switch
+        icon: mdi:television
+        state: "{{ is_state('media_player.lg_webos_tv_65un7200ptf', 'on') }}"
+        turn_on:
+          - service: wake_on_lan.send_magic_packet
+            data:
+              mac: "58:FD:B1:C6:57:BF"
+              broadcast_address: "192.168.1.255"
+              broadcast_port: 9
+          - service: wake_on_lan.send_magic_packet
+            data:
+              mac: "58:FD:B1:C6:57:BF"
+              broadcast_address: "192.168.1.255"
+              broadcast_port: 9
+          - delay: "00:00:01"
+          - service: wake_on_lan.send_magic_packet
+            data:
+              mac: "58:FD:B1:C6:57:BF"
+              broadcast_address: "192.168.1.255"
+              broadcast_port: 9
+        turn_off:
+          - service: media_player.turn_off
+            target:
+              entity_id: media_player.lg_webos_tv_65un7200ptf
+
+      - name: "ปลั้กข้างประตู"
+        unique_id: plakkhaangpratuu_siri_switch
+        icon: mdi:power-socket
+        state: "{{ is_state('switch.aifaethwlaangh_ngnangeln_l1', 'on') }}"
+        turn_on:
+          - service: switch.turn_on
+            target:
+              entity_id: switch.aifaethwlaangh_ngnangeln_l1
+        turn_off:
+          - service: switch.turn_off
+            target:
+              entity_id: switch.aifaethwlaangh_ngnangeln_l1
+
+      - name: "กล้องห้องนั่งเล่น"
+        unique_id: living_room_cam_enable
+        icon: mdi:cctv
+        # ON = กล้องทำงาน (privacy = off)
+        state: "{{ is_state('switch.tapo_c225_2a63_privacy', 'off') }}"
+        turn_on:
+          - service: switch.turn_off
+            target:
+              entity_id: switch.tapo_c225_2a63_privacy
+        turn_off:
+          - service: switch.turn_on
+            target:
+              entity_id: switch.tapo_c225_2a63_privacy
+
+  - trigger:
+      - platform: time_pattern
+        minutes: "/1"
+
+      - platform: state
+        entity_id: calendar.drydream_event_s
+
+    action:
+      - service: calendar.get_events
+        target:
+          entity_id: calendar.drydream_event_s
+        data:
+          start_date_time: "{{ (now() - timedelta(days=60)).isoformat() }}"
+          end_date_time: "{{ (now() + timedelta(days=180)).isoformat() }}"
+        response_variable: agenda
+
+    sensor:
+      - name: calendar_events_list
+        state: "{{ now() }}"
+        attributes:
+          events: "{{ agenda['calendar.drydream_event_s'].events }}"
+
+  - trigger:
+      - platform: time_pattern
+        minutes: "/1"
+    sensor:
+      - name: "Current Time"
+        state: "{{ now().strftime('%H:%M') }}"
+      - name: "Current Date"
+        state: >
+          {% set days = ["st", "nd", "rd"] %}
+          {% set day = now().day %}
+          {{ now().strftime('%A ') }}{{ day }}{{ days[day-1] if day in range(1, 4)
+          and day not in range(11, 14) else 'th' }} {{ now().strftime('%B %Y') }}
+
+  - sensor:
+      - name: "Washer Time Remaining Formatted"
+        state: >
+          {% set finish_raw = states('sensor.ekhruue_ngchakphaa_remaining_time') %}
+          {% if finish_raw in ['unknown', 'unavailable'] %}
+            เสร็จแล้ว
+          {% else %}
+            {% set finish = as_datetime(finish_raw) %}
+            {% if finish == none %}
+              เสร็จแล้ว
+            {% else %}
+              {% set diff = (finish - now()).total_seconds() %}
+              {% if diff <= 0 %}
+                เสร็จแล้ว
+              {% else %}
+                {% set h = (diff // 3600) | int %}
+                {% set m = ((diff % 3600) // 60) | int %}
+                {% set s = (diff % 60) | int %}
+                {{ "{:02d}:{:02d}:{:02d}".format(h, m, s) }}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+
+  - cover:
+      - name: "ประตูรั้ว"
+        unique_id: gate_cover_toggle
+        device_class: gate   # ใช้ 'garage' ได้ถ้าชอบไอคอนแบบประตูโรงรถ
+        state: >
+          {% if is_state('binary_sensor.gate_controller_gate_normalized','on') %}
+            open
+          {% else %}
+            closed
+          {% endif %}
+        open_cover:
+          - service: button.press
+            target:
+              entity_id: button.gate_controller_open
+        close_cover:
+          - service: button.press
+            target:
+              entity_id: button.gate_controller_close
+
+  - binary_sensor:
+      - name: "me_home"
+        unique_id: me_home
+        device_class: presence
+        state: "{{ is_state('device_tracker.drydream', 'home') }}"
+
+      - name: "girlfriend_home"
+        unique_id: girlfriend_home
+        device_class: presence
+        state: "{{ is_state('device_tracker.ipad_3', 'home') }}"
+
+      - name: "gate_controller_gate_normalized"   # <-- ชื่อนี้กำหนด entity_id เป็น binary_sensor.gate_controller_gate_normalized
+        unique_id: gate_controller_gate_normalized
+        device_class: door
+        # เปิด = on/open/opened/unknown/unavailable, ปิด = อย่างอื่น
+        state: >
+          {% set s = states('binary_sensor.gate_controller_gate') | lower %}
+          {{ s in ['on','open','opened','unknown','unavailable'] }}
+        attributes:
+          friendly_name: "สถานะประตูรั้ว"            # แสดงชื่อเป็นภาษาไทย
+          source_state: "{{ states('binary_sensor.gate_controller_gate') }}"
+switch:
+  - platform: wake_on_lan
+    name: DryDrEaM PC
+    mac: "30:56:0F:1A:0E:B7"
+
+# ===== YouTube Music Desktop (PC) =====
+rest:
+  - resource: http://192.168.1.186:9863/api/v1/state
+    scan_interval: 10
+    timeout: 4
+    headers:
+      Authorization: !secret ytmd_token
+      Accept: application/json
+    sensor:
+      - name: "YouTube Music"
+        unique_id: ytmd_now_playing
+        icon: mdi:youtube
+        value_template: >
+          {% set ts = value_json.player.trackState if value_json.player is defined else -1 %}
+          {% if ts == 1 %}playing
+          {% elif ts == 0 %}paused
+          {% elif ts == 2 %}buffering
+          {% else %}idle{% endif %}
+      - name: "YouTube Music Title"
+        unique_id: ytmd_title
+        icon: mdi:music-note
+        value_template: "{{ (value_json.video.title if value_json.video is defined else '')[:255] }}"
+      - name: "YouTube Music Artist"
+        unique_id: ytmd_artist
+        icon: mdi:account-music
+        value_template: "{{ (value_json.video.author if value_json.video is defined else '')[:255] }}"
+      - name: "YouTube Music Album"
+        unique_id: ytmd_album
+        icon: mdi:album
+        value_template: "{{ (value_json.video.album if value_json.video is defined else '')[:255] }}"
+      - name: "YouTube Music Thumbnail"
+        unique_id: ytmd_thumbnail
+        value_template: >
+          {% if value_json.video is defined and value_json.video.thumbnails %}{{ value_json.video.thumbnails[-1].url }}{% endif %}
+      - name: "YouTube Music Duration"
+        unique_id: ytmd_duration
+        icon: mdi:timer-outline
+        unit_of_measurement: s
+        value_template: "{{ value_json.video.durationSeconds | default(0) if value_json.video is defined else 0 }}"
+      - name: "YouTube Music Progress"
+        unique_id: ytmd_progress
+        icon: mdi:progress-clock
+        unit_of_measurement: s
+        value_template: "{{ value_json.player.videoProgress | default(0) | round(0) if value_json.player is defined else 0 }}"
+
+# YouTube Music Desktop control commands
+rest_command:
+  ytmd_play_pause:
+    url: "http://192.168.1.186:9863/api/v1/command"
+    method: POST
+    headers:
+      Authorization: !secret ytmd_token
+      Content-Type: application/json
+    payload: '{"command":"playPause"}'
+  ytmd_next:
+    url: "http://192.168.1.186:9863/api/v1/command"
+    method: POST
+    headers:
+      Authorization: !secret ytmd_token
+      Content-Type: application/json
+    payload: '{"command":"next"}'
+  ytmd_previous:
+    url: "http://192.168.1.186:9863/api/v1/command"
+    method: POST
+    headers:
+      Authorization: !secret ytmd_token
+      Content-Type: application/json
+    payload: '{"command":"previous"}'
+  ytmd_volume_up:
+    url: "http://192.168.1.186:9863/api/v1/command"
+    method: POST
+    headers:
+      Authorization: !secret ytmd_token
+      Content-Type: application/json
+    payload: '{"command":"volumeUp"}'
+  ytmd_volume_down:
+    url: "http://192.168.1.186:9863/api/v1/command"
+    method: POST
+    headers:
+      Authorization: !secret ytmd_token
+      Content-Type: application/json
+    payload: '{"command":"volumeDown"}'
+  ytmd_mute:
+    url: "http://192.168.1.186:9863/api/v1/command"
+    method: POST
+    headers:
+      Authorization: !secret ytmd_token
+      Content-Type: application/json
+    payload: '{"command":"mute"}'
+
+# ===== PC remote control =====
+shell_command:
+  shutdown_drydream_pc: >-
+    ssh -i /config/.ssh/id_ed25519
+    -o UserKnownHostsFile=/config/.ssh/known_hosts
+    -o BatchMode=yes -o ConnectTimeout=5
+    DryDrEaM_Champ@192.168.1.186 "shutdown /s /t 0"
+
+# ===== TTS =====
+tts:
+  - platform: google_translate
+    service_name: google_say
+    language: 'th'
+
+# ===== Input booleans =====
+
+# ===== Input selects =====
+input_select:
+  calendar_year_filter:
+    name: "กรองตามปี"
+    options:
+      - "All"
+      - "2025"
+      - "2026"
+      - "2027"
+    initial: "All"
+    icon: mdi:calendar-filter
+  calendar_month_filter:
+    name: "กรองตามเดือน"
+    options:
+      - "All"
+      - "January"
+      - "February"
+      - "March"
+      - "April"
+      - "May"
+      - "June"
+      - "July"
+      - "August"
+      - "September"
+      - "October"
+      - "November"
+      - "December"
+    initial: "All"
+    icon: mdi:calendar-month
+
+# ===== Utility meters =====
+utility_meter:
+  electricity_cost_monthly:
+    source: sensor.etaaaiffaa_energy_cost
+    cycle: monthly
+
+# ===== Lovelace =====
+lovelace:
+  mode: storage
+  dashboards:
+    dashboard-mylist:
+      mode: yaml
+      title: "My List"
+      icon: mdi:format-list-bulleted
+      show_in_sidebar: true
+      filename: dashboards/mylist/mylist.yaml

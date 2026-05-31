@@ -1,0 +1,55 @@
+blueprint:
+  name: Link On/Off State of Multiple Devices (stable)
+  description: >
+    Link on/off state across multiple entities.
+    - Sends commands ONLY to those not already in the target state.
+    - Ignores entities in unavailable/unknown.
+  domain: automation
+  homeassistant:
+    min_version: 2022.5.0
+  input:
+    linked_entities:
+      name: Entities to link
+      selector:
+        entity:
+          multiple: true
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  linked_entities: !input linked_entities
+
+triggers:
+  - trigger: state
+    entity_id: !input linked_entities
+
+condition:
+  - condition: template
+    value_template: >
+      {{ trigger.to_state.state != trigger.from_state.state }}
+  - condition: template
+    value_template: >
+      {{ trigger.to_state.state in ['on','off'] }}
+  - condition: template
+    value_template: >
+      {{
+        trigger.to_state.context.parent_id is none or (
+          trigger.to_state.context.id != this.context.id and
+          trigger.to_state.context.parent_id != this.context.id
+        )
+      }}
+
+actions:
+  - variables:
+      to_toggle: >
+        {{ expand(linked_entities)
+           | selectattr('state','in',['on','off'])
+           | rejectattr('entity_id','equalto', trigger.entity_id)
+           | selectattr('state','ne', trigger.to_state.state)
+           | map(attribute='entity_id') | list }}
+  - if: "{{ to_toggle | count > 0 }}"
+    then:
+      - service: "homeassistant.turn_{{ trigger.to_state.state }}"
+        target:
+          entity_id: "{{ to_toggle }}"

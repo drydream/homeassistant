@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: homeassistant/home-assistant:2026.5.0
+    volumes:
+      - /volume1/docker/homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+    restart: always
+    network_mode: host
+
+  zigbee2mqtt:
+    container_name: zigbee2mqtt
+    image: koenkk/zigbee2mqtt:2.10.0
+    restart: always
+    volumes:
+      - /volume1/docker/zigbee2mqtt:/app/data
+    network_mode: host
+    environment:
+      - TZ=Asia/Bangkok
+    depends_on:
+      emqx:
+        condition: service_healthy
+
+  emqx:
+    container_name: emqx
+    image: emqx/emqx:6.2.0
+    restart: always
+    network_mode: host
+    volumes:
+      - /volume1/docker/emqx/data:/opt/emqx/data
+      - /volume1/docker/emqx/log:/opt/emqx/log
+    environment:
+      TZ: Asia/Bangkok
+    healthcheck:
+      test: [CMD, /opt/emqx/bin/emqx, ping]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
