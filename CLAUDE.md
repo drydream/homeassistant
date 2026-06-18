@@ -15,7 +15,6 @@
 ## Current Focus
 
 - [ ] Update Calendar dashboard
-- [ ] Create new automation for living room lights
 
 *(Keep this list trimmed to active items only — remove completed ones.)*
 
@@ -98,7 +97,7 @@ Note: git history rewrite (filter-repo/filter-branch) fails on Windows due to co
 - LG WebOS TV (`media_player.lg_webos_tv_65un7200ptf`)
 - Roborock vacuum
 - Mitsubishi washer
-- Tapo cameras/devices — living room camera C225: motion entity `binary_sensor.c225_cell_motion_detection` (replaces defunct `binary_sensor.tapo_c225_2a63_cell_motion_detection`); camera sends frequent false-positive `on` blips (sub-second) — use `template` trigger with `last_changed` duration check instead of `state` + `for:` to avoid timer resets
+- Tapo cameras/devices — living room camera C225 (IP 192.168.1.173, SS camera ID 1): motion via **SS webhook** (not ONVIF — ONVIF `c225_cell_motion_detection` only catches ~3/10 events). SS Action Rule "Living Room Motion to HA" POSTs to `http://192.168.1.170:8123/api/webhook/living_room_ss_motion` → sets `input_boolean.living_room_motion = on` + restarts `timer.living_room_motion` (5 min) → timer expiry sets boolean `off` → `living_room_no_motion_notify` automation fires after 30 min off with lights on
 - Google Calendar, Telegram bot
 - TTS (Google, Thai)
 - YouTube Music Desktop (PC `192.168.1.186:9863`) — see below

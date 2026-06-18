@@ -34,12 +34,19 @@ template:
               mac: "58:FD:B1:C6:57:BF"
               broadcast_address: "192.168.1.255"
               broadcast_port: 9
+          - delay: "00:00:03"
           - service: wake_on_lan.send_magic_packet
             data:
               mac: "58:FD:B1:C6:57:BF"
               broadcast_address: "192.168.1.255"
               broadcast_port: 9
-          - delay: "00:00:01"
+          - delay: "00:00:03"
+          - service: wake_on_lan.send_magic_packet
+            data:
+              mac: "58:FD:B1:C6:57:BF"
+              broadcast_address: "192.168.1.255"
+              broadcast_port: 9
+          - delay: "00:00:03"
           - service: wake_on_lan.send_magic_packet
             data:
               mac: "58:FD:B1:C6:57:BF"
@@ -201,24 +208,24 @@ rest:
       - name: "YouTube Music Title"
         unique_id: ytmd_title
         icon: mdi:music-note
-        value_template: "{{ (value_json.video.title if value_json.video is defined else '')[:255] }}"
+        value_template: "{{ (value_json.video.title if value_json.video else '')[:255] }}"
       - name: "YouTube Music Artist"
         unique_id: ytmd_artist
         icon: mdi:account-music
-        value_template: "{{ (value_json.video.author if value_json.video is defined else '')[:255] }}"
+        value_template: "{{ (value_json.video.author if value_json.video else '')[:255] }}"
       - name: "YouTube Music Album"
         unique_id: ytmd_album
         icon: mdi:album
-        value_template: "{{ (value_json.video.album if value_json.video is defined else '')[:255] }}"
+        value_template: "{{ (value_json.video.album if value_json.video else '')[:255] }}"
       - name: "YouTube Music Thumbnail"
         unique_id: ytmd_thumbnail
         value_template: >
-          {% if value_json.video is defined and value_json.video.thumbnails %}{{ value_json.video.thumbnails[-1].url }}{% endif %}
+          {% if value_json.video and value_json.video.thumbnails %}{{ value_json.video.thumbnails[-1].url }}{% endif %}
       - name: "YouTube Music Duration"
         unique_id: ytmd_duration
         icon: mdi:timer-outline
         unit_of_measurement: s
-        value_template: "{{ value_json.video.durationSeconds | default(0) if value_json.video is defined else 0 }}"
+        value_template: "{{ value_json.video.durationSeconds | default(0) if value_json.video else 0 }}"
       - name: "YouTube Music Progress"
         unique_id: ytmd_progress
         icon: mdi:progress-clock
@@ -285,6 +292,19 @@ tts:
     language: 'th'
 
 # ===== Input booleans =====
+input_boolean:
+  dog_home:
+    name: "หมาอยู่บ้าน"
+    icon: mdi:dog
+  living_room_motion:
+    name: "มีการเคลื่อนไหวห้องนั่งเล่น"
+    icon: mdi:motion-sensor
+
+# ===== Timers =====
+timer:
+  living_room_motion:
+    name: "Timer เคลื่อนไหวห้องนั่งเล่น"
+    duration: "00:05:00"
 
 # ===== Input selects =====
 input_select:
