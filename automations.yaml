@@ -203,3 +203,64 @@
       linked_entities:
       - switch.h_ngnmaachanlaang_left
       - switch.h_ngnmaachanlaang_right
+
+- id: living_room_no_motion_notify
+  alias: "แจ้งเตือนไฟ/พัดลมห้องนั่งเล่น — ไม่มีการเคลื่อนไหวนาน 30 นาที"
+  mode: single
+  triggers:
+    - trigger: template
+      value_template: >
+        {{ is_state('binary_sensor.c225_cell_motion_detection', 'off')
+           and (now() - states.binary_sensor.c225_cell_motion_detection.last_changed).total_seconds() >= 1800 }}
+  conditions:
+    - condition: or
+      conditions:
+        - condition: state
+          entity_id: switch.aifaethwbnh_ngnangeln_l2
+          state: "on"
+        - condition: state
+          entity_id: switch.aifaethwbnh_ngnangeln_l3
+          state: "on"
+        - condition: state
+          entity_id: switch.phadlmh_ngnangeln
+          state: "on"
+        - condition: state
+          entity_id: switch.aifh_ngchakphaa_right
+          state: "on"
+  actions:
+    - action: notify.mobile_app_drydream
+      data:
+        message: "ไม่มีการเคลื่อนไหวในห้องนั่งเล่นนาน 30 นาที ไฟ/พัดลมยังเปิดอยู่ ปิดด้วยไหม?"
+        data:
+          actions:
+            - action: TURN_OFF_LIVING_ROOM
+              title: "ปิดเลย"
+            - action: KEEP_LIVING_ROOM_ON
+              title: "ไม่ต้อง"
+    - action: notify.mobile_app_sm_s908e
+      data:
+        message: "ไม่มีการเคลื่อนไหวในห้องนั่งเล่นนาน 30 นาที ไฟ/พัดลมยังเปิดอยู่ ปิดด้วยไหม?"
+        data:
+          actions:
+            - action: TURN_OFF_LIVING_ROOM
+              title: "ปิดเลย"
+            - action: KEEP_LIVING_ROOM_ON
+              title: "ไม่ต้อง"
+
+- id: living_room_turn_off_from_notify
+  alias: "ปิดไฟ/พัดลมห้องนั่งเล่น — จาก notification"
+  mode: single
+  triggers:
+    - trigger: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: TURN_OFF_LIVING_ROOM
+  conditions: []
+  actions:
+    - action: homeassistant.turn_off
+      target:
+        entity_id:
+          - switch.aifaethwbnh_ngnangeln_l2
+          - switch.aifaethwbnh_ngnangeln_l3
+          - switch.phadlmh_ngnangeln
+          - switch.aifh_ngchakphaa_right

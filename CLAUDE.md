@@ -17,7 +17,7 @@
 - [ ] Update Calendar dashboard
 - [ ] Create new automation for living room lights
 
-*(Keep this list trimmed to whatever the user is actively working on — remove completed items.)*
+*(Keep this list trimmed to active items only — remove completed ones.)*
 
 ## Project
 
@@ -27,19 +27,22 @@ Paths: Host `/volume1/docker/homeassistant` → Container `/config`
 
 ## SSH / Docker Access
 
+Claude Code SSH key (`~/.ssh/id_ed25519`) is authorized on NAS (`drydream@192.168.1.170`).  
+Bash tool must use Windows OpenSSH explicitly: `/c/Windows/System32/OpenSSH/ssh.exe`  
+Passwordless sudo for docker is configured via `/etc/sudoers.d/drydream-docker` — must use **full path** `/usr/local/bin/docker` (not `docker`) or sudo will still prompt.
+
 ```bash
-ssh drydream@192.168.1.170        # key auth
-sudo docker exec homeassistant python -m homeassistant --script check_config -c /config   # validate (HA Container has no `ha` CLI)
-sudo docker compose -f /volume1/docker/homeassistant/docker-compose.yml restart homeassistant
+# SSH from Bash tool
+/c/Windows/System32/OpenSSH/ssh.exe -i /c/Users/DryDrEaM_Champ/.ssh/id_ed25519 -o StrictHostKeyChecking=no drydream@192.168.1.170 "sudo /usr/local/bin/docker exec homeassistant ..."
+
+# Validate config
+sudo /usr/local/bin/docker exec homeassistant python -m homeassistant --script check_config -c /config
+
+# Restart
+sudo /usr/local/bin/docker compose -f /volume1/docker/homeassistant/docker-compose.yml restart homeassistant
 ```
 
-Docker path: `/usr/local/bin/docker`
-
-Passwordless sudo (run once on NAS if needed):
-```bash
-echo 'drydream ALL=(ALL) NOPASSWD: /usr/local/bin/docker' | sudo tee /etc/sudoers.d/drydream-docker
-sudo chmod 440 /etc/sudoers.d/drydream-docker
-```
+Docker path: `/usr/local/bin/docker` (symlink → `/var/packages/ContainerManager/target/usr/bin/docker`)
 
 ## Services
 
@@ -51,7 +54,6 @@ sudo chmod 440 /etc/sudoers.d/drydream-docker
 | node-red | 4.1.8-22 | port 1880 |
 | matter-server | stable | |
 | homebridge | latest | |
-| gitea | latest | port 3000, SSH 222 |
 | cloudflared | latest | |
 
 Docker Compose: `/volume1/docker/homeassistant/docker-compose.yml`
@@ -71,11 +73,11 @@ File: `/volume1/docker/zigbee2mqtt/configuration.yaml`
 - Availability: active 10min / passive 1500min
 - `last_seen: ISO_8601`, `log_level: warning`
 
-## Git / Gitea
+## Git
 
-Remote: `ssh://git@gitea-nas/drydream/home-assistant-config.git`  
-SSH alias `gitea-nas` → `192.168.1.170:222`  
-Windows git uses Windows OpenSSH: `core.sshCommand = C:/Windows/System32/OpenSSH/ssh.exe` (already set, no password prompts)
+Remote: `https://github.com/drydream/homeassistant` (GitHub)  
+Windows git uses Windows OpenSSH: `core.sshCommand = C:/Windows/System32/OpenSSH/ssh.exe` (already set, no password prompts)  
+Note: git history rewrite (filter-repo/filter-branch) fails on Windows due to colon in `dwains-dashboard/configs/cards/areas/living_room/custom:mushroom-template-card.yaml` — use orphan branch approach if history needs cleaning.
 
 ## Config Files
 
@@ -96,7 +98,7 @@ Windows git uses Windows OpenSSH: `core.sshCommand = C:/Windows/System32/OpenSSH
 - LG WebOS TV (`media_player.lg_webos_tv_65un7200ptf`)
 - Roborock vacuum
 - Mitsubishi washer
-- Tapo cameras/devices
+- Tapo cameras/devices — living room camera C225: motion entity `binary_sensor.c225_cell_motion_detection` (replaces defunct `binary_sensor.tapo_c225_2a63_cell_motion_detection`); camera sends frequent false-positive `on` blips (sub-second) — use `template` trigger with `last_changed` duration check instead of `state` + `for:` to avoid timer resets
 - Google Calendar, Telegram bot
 - TTS (Google, Thai)
 - YouTube Music Desktop (PC `192.168.1.186:9863`) — see below
@@ -184,6 +186,8 @@ Dashboard button (`custom:button-card`) uses top-level JS-template `tap_action` 
 - Always validate YAML before applying (`python -m homeassistant --script check_config -c /config` or Dev Tools)
 - Keep backward compatibility
 - `color_temp` removed in 2026.3 → use `color_temp_kelvin`
+- `panel_iframe` removed in HA 2024.5 — use YAML dashboard with `type: iframe` card + `type: panel` view
+- Config check: ignore pre-existing "Unable to turn on" webostv warning — it's a known non-fatal error, not caused by config changes
 
 ## Workflow
 
@@ -199,3 +203,11 @@ Dashboard button (`custom:button-card`) uses top-level JS-template `tap_action` 
 - Source: `calendar.drydream_event_s`
 - Sensor: `sensor.calendar_events_list`
 - Scripts: `add_calendar_note`, `delete_calendar_event`, `load_event_for_edit`
+
+## My List
+
+- Dashboard: `/dashboard-mylist` (YAML mode, file: `dashboards/mylist/mylist.yaml`)
+- Vercel app: `https://mydrydreamlistnew.vercel.app/` — embedded as full-screen iframe
+- GitHub: `https://github.com/drydream/mydrydreamlist` | Local: `D:\claude-workspace\myprivatelist`
+- Auth: single-password (`lib/actions/auth.ts`), session cookie `sameSite: 'none'` + `secure: true` required for cross-site iframe POST (Next.js server actions)
+- Data: Supabase, `lib/actions/items.ts` — all mutations call `revalidatePath('/home')`
