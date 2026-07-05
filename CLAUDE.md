@@ -2,37 +2,29 @@
 
 ## AI Directives
 
-- **Act as an expert.** Skip basic Home Assistant, Docker, YAML, or Git explanations.
-- **Concise output.** Explain only what is necessary or what changed.
-- **No snippet omissions.** When modifying code, output the full block — avoid `# ... existing code ...` unless the section is genuinely long.
-- **Language.** Default English. Use Thai only when user explicitly requests it. Keep identifiers (`entity_id`, function names, variables) in `english_snake_case`.
-- **Storage-mode dashboards.** Edit via HA UI only — never patch `.storage/lovelace*` directly.
-- **Think before coding.** State assumptions explicitly. If multiple interpretations exist, present them. If unclear, stop and ask — don't guess silently.
-- **Simplicity first.** Minimum code that solves the problem. No speculative features, unnecessary abstractions, or "flexibility" that wasn't requested.
-- **Surgical changes.** Touch only what the request requires. Don't refactor adjacent code, fix style, or remove pre-existing dead code unless asked. Remove only what YOUR changes made unused.
-- **Verify success.** For multi-step tasks, state a brief plan with a verifiable check per step. Weak goals ("make it work") require clarification first.
+- Act as expert. Skip basic HA/Docker/YAML/Git explanations.
+- Concise output. Explain only what changed.
+- No snippet omissions when modifying code.
+- Language: English default. Thai only when requested. Identifiers: `english_snake_case`.
+- Storage-mode dashboards: prefer HA UI. Direct `.storage/lovelace*` edit via SSH+Python JSON allowed when requested.
+- Think before coding. State assumptions. If unclear, ask.
+- Simplicity first. No speculative features or abstractions.
+- Surgical changes. Touch only what the request requires.
+- Verify success. Plan with verifiable checks per step.
 
 ## Current Focus
 
 - [ ] Update Calendar dashboard
 
-*(Keep this list trimmed to active items only — remove completed ones.)*
-
 ## Project
 
-Home Assistant 2026.5.0 (Docker on Synology NAS)
+HA 2026.5.0 (Docker, Synology NAS). Host `/volume1/docker/homeassistant` → Container `/config`
 
-Paths: Host `/volume1/docker/homeassistant` → Container `/config`
-
-## SSH / Docker Access
-
-Claude Code SSH key (`~/.ssh/id_ed25519`) is authorized on NAS (`drydream@192.168.1.170`).  
-Bash tool must use Windows OpenSSH explicitly: `/c/Windows/System32/OpenSSH/ssh.exe`  
-Passwordless sudo for docker is configured via `/etc/sudoers.d/drydream-docker` — must use **full path** `/usr/local/bin/docker` (not `docker`) or sudo will still prompt.
+## SSH / Docker
 
 ```bash
-# SSH from Bash tool
-/c/Windows/System32/OpenSSH/ssh.exe -i /c/Users/DryDrEaM_Champ/.ssh/id_ed25519 -o StrictHostKeyChecking=no drydream@192.168.1.170 "sudo /usr/local/bin/docker exec homeassistant ..."
+# Claude Code SSH (Bash tool)
+/c/Windows/System32/OpenSSH/ssh.exe -i /c/Users/DryDrEaM_Champ/.ssh/id_ed25519 -o StrictHostKeyChecking=no drydream@192.168.1.170 "sudo /usr/local/bin/docker exec homeassistant <cmd>"
 
 # Validate config
 sudo /usr/local/bin/docker exec homeassistant python -m homeassistant --script check_config -c /config
@@ -41,7 +33,9 @@ sudo /usr/local/bin/docker exec homeassistant python -m homeassistant --script c
 sudo /usr/local/bin/docker compose -f /volume1/docker/homeassistant/docker-compose.yml restart homeassistant
 ```
 
-Docker path: `/usr/local/bin/docker` (symlink → `/var/packages/ContainerManager/target/usr/bin/docker`)
+- NAS: `drydream@192.168.1.170` — passwordless sudo via `/etc/sudoers.d/drydream-docker`
+- Must use full path `/usr/local/bin/docker` (not `docker`) for sudo
+- SCP not available on NAS — transfer files via base64: `echo '<b64>' | base64 -d > /tmp/file`
 
 ## Services
 
@@ -51,62 +45,69 @@ Docker path: `/usr/local/bin/docker` (symlink → `/var/packages/ContainerManage
 | zigbee2mqtt | 2.10.0 | localhost:1883 |
 | emqx | 6.2.0 | MQTT broker, host network |
 | node-red | 4.1.8-22 | port 1880 |
-| matter-server | stable | |
-| homebridge | latest | |
-| cloudflared | latest | |
-
-Docker Compose: `/volume1/docker/homeassistant/docker-compose.yml`
+| matter-server / homebridge / cloudflared | latest | |
 
 ## EMQX
 
-- Auth: built-in DB, SHA256; ACL: `drydream` full, `{deny,all}` fallback
-- `no_match=deny`, `deny_action=disconnect`, TCP 1883 only
-- Data: `/volume1/docker/emqx/data` | ACL: `.../authz/acl.conf`
-- Dashboard: `http://192.168.1.170:18083`
+Auth: built-in DB SHA256. ACL: `drydream` full, `{deny,all}` fallback. `no_match=deny`, TCP 1883. Dashboard: `http://192.168.1.170:18083`
 
 ## Zigbee2MQTT
 
-File: `/volume1/docker/zigbee2mqtt/configuration.yaml`
-- MQTT: `mqtt://localhost:1883` | Serial: `tcp://192.168.1.171:6638`
-- Channel: 25, TX power: 18
-- Availability: active 10min / passive 1500min
-- `last_seen: ISO_8601`, `log_level: warning`
+`/volume1/docker/zigbee2mqtt/configuration.yaml` — MQTT: `mqtt://localhost:1883`, Serial: `tcp://192.168.1.171:6638`, ch 25, TX 18, availability 10/1500min, `last_seen: ISO_8601`, `log_level: warning`
 
 ## Git
 
-Remote: `https://github.com/drydream/homeassistant` (GitHub)  
-Windows git uses Windows OpenSSH: `core.sshCommand = C:/Windows/System32/OpenSSH/ssh.exe` (already set, no password prompts)  
-Note: git history rewrite (filter-repo/filter-branch) fails on Windows due to colon in `dwains-dashboard/configs/cards/areas/living_room/custom:mushroom-template-card.yaml` — use orphan branch approach if history needs cleaning.
+Remote: `https://github.com/drydream/homeassistant`. `core.sshCommand = C:/Windows/System32/OpenSSH/ssh.exe` (set). History rewrite fails on Windows (colon in dwains-dashboard filename) — use orphan branch.
 
 ## Config Files
 
-- `configuration.yaml` — root config
-- `automations.yaml`, `scripts.yaml`, `scenes.yaml`
-- `secrets.yaml` — gitignored
-
-## Structure
-
-- `custom_components/` — 3rd-party integrations
-- `blueprints/`, `dwains-dashboard/`, `www/community/`
-- `.storage/` — runtime, **do not edit**
+`configuration.yaml`, `automations.yaml`, `scripts.yaml`, `scenes.yaml`, `secrets.yaml` (gitignored)
 
 ## Devices
 
 - Tuya / Zigbee lights & switches
 - Zigbee gate relay (4s script)
-- LG WebOS TV (`media_player.lg_webos_tv_65un7200ptf`)
-- Roborock vacuum
-- Mitsubishi washer
-- Tapo cameras/devices — living room camera C225 (IP 192.168.1.173, SS camera ID 1): motion via **SS webhook** (not ONVIF — ONVIF `c225_cell_motion_detection` only catches ~3/10 events). SS Action Rule "Living Room Motion to HA" POSTs to `http://192.168.1.170:8123/api/webhook/living_room_ss_motion` → sets `input_boolean.living_room_motion = on` + restarts `timer.living_room_motion` (5 min) → timer expiry sets boolean `off` → `living_room_no_motion_notify` automation fires after 30 min off with lights on
-- Google Calendar, Telegram bot
-- TTS (Google, Thai)
-- YouTube Music Desktop (PC `192.168.1.186:9863`) — see below
-- DryDrEaM PC power: `switch.drydream_pc` (WoL, wake) + `shell_command.shutdown_drydream_pc` (SSH shutdown) — see PC Remote Control below
+- LG WebOS TV: `media_player.lg_webos_tv_65un7200ptf`
+- Roborock vacuum, Mitsubishi washer
+- Tapo C225 living room (IP `192.168.1.173`, SS cam ID 1): motion via **SS webhook** → `input_boolean.living_room_motion` + `timer.living_room_motion` (5min) → `living_room_no_motion_notify` after 30min off with lights on
+- Google Calendar, Telegram bot, TTS (Google, Thai)
+- YTMD (PC `192.168.1.186:9863`) — see YTMD section
+- DryDrEaM PC: `switch.drydream_pc` (WoL) + `shell_command.shutdown_drydream_pc` (SSH)
+- **Bedroom AC IR** HMS06CBU IP `192.168.1.177` device_id `ebb508d08d4b6d9050vjjr`: `shell_command.ac_bedroom_on/off` → `/config/send_ac_ir.py` → tinytuya local. Toggle: `script.toggle_bedroom_ac` checks `binary_sensor.sthaanaae_rh_ngn_n_contact`. **No cloud.**
+- **Living room IR** HMS06CBU IP `192.168.1.174` device_id `eb888f1616078e8d40oyr6`: still Tuya cloud scenes (not yet migrated).
+
+## tinytuya / IR Blasters
+
+tinytuya = Python lib (pip dep of tuya_local HACS). Runs inside HA container. IR codes stored in `/config/send_ac_ir.py`.
+
+**Key facts:**
+- dp 201 = send IR / enter study mode
+- dp 202 = received IR code — arrives via **cloud MQTT only** (not local). `remote.learn_command` always times out. Workaround: check HA debug logs for dp 202 value.
+- local_key: get from `iot.tuya.com → Cloud → Devices → Device Detail` (free, no subscription needed)
+- Tuya IoT Core API subscription needed only for scene trigger calls — not for local control
+
+**Add new IR device:**
+```bash
+# Find device
+docker exec homeassistant python3 -c "import tinytuya; [print(ip,v['gwId'],v['version']) for ip,v in tinytuya.deviceScan(maxretry=5).items()]"
+
+# Study mode (then press remote, check logs for dp 202)
+docker exec homeassistant python3 -c "
+import tinytuya,json; d=tinytuya.Device('<id>','<ip>','<key>',version=3.3)
+d.set_value(201,json.dumps({'control':'study'}))"
+docker logs homeassistant --since 1m 2>&1 | grep 'dpId.*202' -A1
+
+# Send IR
+docker exec homeassistant python3 -c "
+import tinytuya,json; d=tinytuya.Device('<id>','<ip>','<key>',version=3.3)
+d.set_value(201,json.dumps({'control':'send_ir','type':0,'head':'','key1':'1<code>'}))"
+```
+Add codes to `/config/send_ac_ir.py`, add `shell_command` in `configuration.yaml`, restart HA.
 
 ## Zigbee Devices
 
-| IEEE | Friendly Name |
-|------|--------------|
+| IEEE | Name |
+|------|------|
 | 0x4c97a1fffecfbd11 | ไฟเตียง |
 | 0x70b3d52b601208ff | เตาไฟฟ้า |
 | 0x70c59cfffe8cce9c | ไฟแถวบนห้องนั่งเล่น |
@@ -123,90 +124,46 @@ Note: git history rewrite (filter-repo/filter-branch) fails on Windows due to co
 | 0x0cae5ffffefb206a | ไฟห้องครัว |
 | 0x449fdafffe62add1 | ไฟบันไดชั้นล่าง |
 
-## YouTube Music Desktop (YTMD)
+## YTMD
 
-App: `ytmdesktop/ytmdesktop` on PC `192.168.1.186:9863`  
-Token: `secrets.yaml` key `ytmd_token` (no Bearer prefix in header)
+PC `192.168.1.186:9863`. Token: `secrets.yaml` key `ytmd_token` (no Bearer prefix).  
+Sensors (10s): `sensor.youtube_music{,_title,_artist,_album,_thumbnail,_duration,_progress}` — states: `playing|paused|buffering|idle`  
+Commands: `rest_command.ytmd_{play_pause,next,previous,volume_up,volume_down,mute}`  
+Re-auth: POST `/api/v1/auth/requestcode` → user clicks Allow → POST `/api/v1/auth/request` → token
 
-Sensors (poll 10s): `sensor.youtube_music{,_title,_artist,_album,_thumbnail,_duration,_progress}`  
-State values: `playing | paused | buffering | idle`  
-Commands: `rest_command.ytmd_{play_pause,next,previous,volume_up,volume_down,mute}`
+## PC Remote Control (`192.168.1.186`)
 
-Auth flow (if re-auth needed):
-1. `POST /api/v1/auth/requestcode` `{appId,appName,appVersion}` → `{code}`
-2. User clicks Allow in YTMD (dialog may be delayed)
-3. `POST /api/v1/auth/request` `{appId,code}` → `{token}`
-
-## PC Remote Control (DryDrEaM PC `192.168.1.186`)
-
-Windows user `DryDrEaM_Champ` (admin). Two services in HA:
-
-- **Wake:** `switch.drydream_pc` — `wake_on_lan` platform, MAC `30:56:0F:1A:0E:B7`
-- **Shutdown:** `shell_command.shutdown_drydream_pc` — SSH from container
-
-SSH key inside HA container: `/config/.ssh/id_ed25519` (persisted via bind-mount).  
-Public key authorized at: `C:\ProgramData\ssh\administrators_authorized_keys` on PC (admin keys MUST live here, ACLs locked to SYSTEM + Administrators).  
-Known hosts: `/config/.ssh/known_hosts`.  
-
-Shell command body:
-```
-ssh -i /config/.ssh/id_ed25519 -o UserKnownHostsFile=/config/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=5 DryDrEaM_Champ@192.168.1.186 "shutdown /s /t 0"
-```
-
-Status sensor: `binary_sensor.192_168_1_185` (Ping integration — host updated to `.186`; entity_id is just a label).
-
-Dashboard button (`custom:button-card`) uses top-level JS-template `tap_action` for toggle behavior — state-level `tap_action` overrides do NOT fire on this card version, only display fields (name/icon/color) merge.
+- Wake: `switch.drydream_pc` (WoL, MAC `30:56:0F:1A:0E:B7`)
+- Shutdown: `shell_command.shutdown_drydream_pc` — SSH key at `/config/.ssh/id_ed25519`, public key at `C:\ProgramData\ssh\administrators_authorized_keys`
+- Status: `binary_sensor.192_168_1_185` (Ping, host is actually `.186`)
+- `custom:button-card` toggle: use top-level JS-template `tap_action` — state-level `tap_action` overrides don't fire
 
 ## Conventions
 
-- Mixed Thai/English naming, Timezone: Asia/Bangkok
-- `entity_id`: `english_snake_case` | `alias`: Thai allowed
-- Scripts: `action_object` pattern (e.g. `turn_on_gate_4s`)
-- Presence → lighting automation | MQTT via Zigbee2MQTT → EMQX
-- Utility meters enabled
+- Timezone: Asia/Bangkok. Mixed Thai/English naming.
+- Scripts: `action_object` pattern. `mode: single` default; `restart` for motion lights.
+- Presence → lighting. MQTT via Zigbee2MQTT → EMQX. Utility meters enabled.
 
-## UI Rules
+## UI
 
-- Mushroom Cards + Layout Card, mobile portrait optimized
-- Avoid default Lovelace cards
-- Storage-mode dashboards → edit via UI only (not `.storage/`)
-
-## Automation Style
-
-- Descriptive aliases (Thai OK), always set `id`
-- `mode: single` default; use `restart` for motion lights
-- Scripts for reusable logic, non-blocking actions preferred
-- No duplicate triggers
+Mushroom Cards + Layout Card, mobile portrait. No default Lovelace cards.
 
 ## Guardrails
 
-- Do not modify `.storage/`
-- Do not remove entities/automations unless asked
-- Always validate YAML before applying (`python -m homeassistant --script check_config -c /config` or Dev Tools)
-- Keep backward compatibility
-- `color_temp` removed in 2026.3 → use `color_temp_kelvin`
-- `panel_iframe` removed in HA 2024.5 — use YAML dashboard with `type: iframe` card + `type: panel` view
-- Config check: ignore pre-existing "Unable to turn on" webostv warning — it's a known non-fatal error, not caused by config changes
+- `.storage/lovelace*`: SSH+Python JSON only, backup first. Never edit other `.storage/` files.
+- Always validate before applying. Restart only if required (prefer domain reload).
+- `color_temp` → `color_temp_kelvin` (2026.3+)
+- `panel_iframe` removed 2024.5 → use `type: iframe` card + `type: panel` view
+- Ignore pre-existing webostv "Unable to turn on" warning in config check
 
 ## Workflow
 
-1. Edit YAML
-2. Validate: HA Container has no `ha` CLI — use  
-   `sudo docker exec homeassistant python -m homeassistant --script check_config -c /config`  
-   or HA Dev Tools → YAML → Check Configuration
-3. Reload affected domain (restart only if required)
+1. Edit YAML → 2. Validate → 3. Reload domain (or restart if needed)
 
 ## Calendar
 
-- Dashboard: `/dashboard-calendar`
-- Source: `calendar.drydream_event_s`
-- Sensor: `sensor.calendar_events_list`
-- Scripts: `add_calendar_note`, `delete_calendar_event`, `load_event_for_edit`
+Dashboard: `/dashboard-calendar`. Source: `calendar.drydream_event_s`. Sensor: `sensor.calendar_events_list`. Scripts: `add_calendar_note`, `delete_calendar_event`, `load_event_for_edit`
 
 ## My List
 
-- Dashboard: `/dashboard-mylist` (YAML mode, file: `dashboards/mylist/mylist.yaml`)
-- Vercel app: `https://mydrydreamlistnew.vercel.app/` — embedded as full-screen iframe
-- GitHub: `https://github.com/drydream/mydrydreamlist` | Local: `D:\claude-workspace\myprivatelist`
-- Auth: single-password (`lib/actions/auth.ts`), session cookie `sameSite: 'none'` + `secure: true` required for cross-site iframe POST (Next.js server actions)
-- Data: Supabase, `lib/actions/items.ts` — all mutations call `revalidatePath('/home')`
+Dashboard: `/dashboard-mylist` (YAML, `dashboards/mylist/mylist.yaml`). Vercel: `https://mydrydreamlistnew.vercel.app/` (iframe). GitHub: `https://github.com/drydream/mydrydreamlist`. Local: `D:\claude-workspace\myprivatelist`. Auth: single-password, `sameSite:none`+`secure:true` cookie required for cross-site POST. Data: Supabase, `lib/actions/items.ts`, all mutations call `revalidatePath('/home')`.

@@ -145,9 +145,10 @@ template:
   - cover:
       - name: "ประตูรั้ว"
         unique_id: gate_cover_toggle
-        device_class: gate   # ใช้ 'garage' ได้ถ้าชอบไอคอนแบบประตูโรงรถ
+        device_class: shutter
         state: >
-          {% if is_state('binary_sensor.gate_controller_gate_normalized','on') %}
+          {% set s = states('binary_sensor.gate_controller_gate') | lower %}
+          {% if s in ['on','open','opened','unknown','unavailable'] %}
             open
           {% else %}
             closed
@@ -284,6 +285,8 @@ shell_command:
     -o UserKnownHostsFile=/config/.ssh/known_hosts
     -o BatchMode=yes -o ConnectTimeout=5
     DryDrEaM_Champ@192.168.1.186 "shutdown /s /t 0"
+  ac_bedroom_on: "python3 /config/send_ac_ir.py on"
+  ac_bedroom_off: "python3 /config/send_ac_ir.py off"
 
 # ===== TTS =====
 tts:

@@ -1,3 +1,17 @@
+toggle_bedroom_ac:
+  alias: "Toggle แอร์ห้องนอน"
+  mode: single
+  sequence:
+    - choose:
+        - conditions:
+            - condition: state
+              entity_id: binary_sensor.sthaanaae_rh_ngn_n_contact
+              state: "on"
+          sequence:
+            - action: shell_command.ac_bedroom_off
+      default:
+        - action: shell_command.ac_bedroom_on
+
 open_door_for_4_seconds:
   alias: เปิดรั้วนิดเดียว
   mode: single
