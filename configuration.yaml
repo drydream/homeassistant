@@ -57,6 +57,15 @@ template:
             target:
               entity_id: media_player.lg_webos_tv_65un7200ptf
 
+      - name: "แอร์ห้องนอน"
+        unique_id: bedroom_ac_switch
+        icon: mdi:air-conditioner
+        state: "{{ is_state('binary_sensor.sthaanaae_rh_ngn_n_contact', 'on') }}"
+        turn_on:
+          - action: shell_command.ac_bedroom_on
+        turn_off:
+          - action: shell_command.ac_bedroom_off
+
       - name: "ปลั้กข้างประตู"
         unique_id: plakkhaangpratuu_siri_switch
         icon: mdi:power-socket

@@ -73,7 +73,7 @@ Remote: `https://github.com/drydream/homeassistant`. `core.sshCommand = C:/Windo
 - Google Calendar, Telegram bot, TTS (Google, Thai)
 - YTMD (PC `192.168.1.186:9863`) — see YTMD section
 - DryDrEaM PC: `switch.drydream_pc` (WoL) + `shell_command.shutdown_drydream_pc` (SSH)
-- **Bedroom AC IR** HMS06CBU IP `192.168.1.177` device_id `ebb508d08d4b6d9050vjjr`: `shell_command.ac_bedroom_on/off` → `/config/send_ac_ir.py` → tinytuya local. Toggle: `script.toggle_bedroom_ac` checks `binary_sensor.sthaanaae_rh_ngn_n_contact`. **No cloud.**
+- **Bedroom AC IR** HMS06CBU IP `192.168.1.177` device_id `ebb508d08d4b6d9050vjjr`: `shell_command.ac_bedroom_on/off` → `/config/send_ac_ir.py` → tinytuya local. Toggle: `script.toggle_bedroom_ac` checks `binary_sensor.sthaanaae_rh_ngn_n_contact`. Siri/HomeKit: `switch.bedroom_ac` (template switch, state from same binary_sensor). `script.toggle_bedroom_ac` excluded from HomeKit to avoid conflict. **No cloud.**
 - **Living room IR** HMS06CBU IP `192.168.1.174` device_id `eb888f1616078e8d40oyr6`: still Tuya cloud scenes (not yet migrated).
 
 ## tinytuya / IR Blasters
