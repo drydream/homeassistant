@@ -69,7 +69,7 @@ Auth: built-in DB SHA256. ACL: `drydream` full, `{deny,all}` fallback. `no_match
 
 ## Git
 
-Remote: `https://github.com/drydream/homeassistant`. `core.sshCommand = C:/Windows/System32/OpenSSH/ssh.exe` (set). History rewrite fails on Windows (colon in dwains-dashboard filename) — use orphan branch.
+Remote: `https://github.com/drydream/homeassistant` (named `github`, not `origin`). `core.sshCommand = C:/Windows/System32/OpenSSH/ssh.exe` (set). History rewrite fails on Windows (colon in dwains-dashboard filename) — use orphan branch.
 
 ## Config Files
 
