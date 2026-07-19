@@ -31,8 +31,19 @@ sudo /usr/local/bin/docker exec homeassistant python -m homeassistant --script c
 
 # Restart
 sudo /usr/local/bin/docker compose -f /volume1/docker/homeassistant/docker-compose.yml restart homeassistant
+
+# HA version update — stop+rm BEFORE up, never recreate via plain `up -d`.
+# (compose recreate renames old container to <id>_homeassistant transiently → Synology
+# Container Manager UI caches the stale name → "container does not exist" on click)
+sudo /usr/local/bin/docker compose -f /volume1/docker/homeassistant/docker-compose.yml pull homeassistant
+sudo /usr/local/bin/docker stop homeassistant && sudo /usr/local/bin/docker rm homeassistant
+sudo /usr/local/bin/docker compose -f /volume1/docker/homeassistant/docker-compose.yml up -d homeassistant
+# If stale name already appears in UI: sudo /usr/syno/bin/synopkg restart ContainerManager
 ```
 
+- **HA MCP server** configured in Claude Code (user scope, `mcp__homeassistant__*`): entity states + Assist actions via `/api/mcp` — prefer over SSH for state checks/service calls.
+- **hass-mcp** (user scope, `mcp__hass-mcp__*`, uvx): full REST access — all entities, `call_service_tool`, history, `get_error_log`, `search_entities_tool`. Prefer for anything the Assist MCP can't see.
+- **nas-mcp** (user scope, `mcp__nas-mcp__*`, `tools/nas_mcp.py` in this repo, uv run --script): SSH wrapper — `ha_exec`, `ha_logs`, `ha_validate_config`, `container_action`, `nas_exec`. Prefer over raw Bash SSH commands. Raw SSH only as fallback.
 - NAS: `drydream@192.168.1.170` — passwordless sudo via `/etc/sudoers.d/drydream-docker`
 - Must use full path `/usr/local/bin/docker` (not `docker`) for sudo
 - SCP not available on NAS — transfer files via base64: `echo '<b64>' | base64 -d > /tmp/file`
@@ -41,11 +52,12 @@ sudo /usr/local/bin/docker compose -f /volume1/docker/homeassistant/docker-compo
 
 | Service | Version | Notes |
 |---------|---------|-------|
-| homeassistant | 2026.5.0 | host network |
+| homeassistant | 2026.7.2 | host network |
 | zigbee2mqtt | 2.10.0 | localhost:1883 |
 | emqx | 6.2.0 | MQTT broker, host network |
 | node-red | 4.1.8-22 | port 1880 |
 | matter-server / homebridge / cloudflared | latest | |
+| vaultwarden | latest | `/volume1/docker/vaultwarden`, port 8222, `https://password.drydream.work` via cloudflared. Backup sidecar → `/volume1/container_backup/vaultwarden` daily, 14-day retention |
 
 ## EMQX
 
@@ -73,7 +85,7 @@ Remote: `https://github.com/drydream/homeassistant`. `core.sshCommand = C:/Windo
 - Google Calendar, Telegram bot, TTS (Google, Thai)
 - YTMD (PC `192.168.1.186:9863`) — see YTMD section
 - DryDrEaM PC: `switch.drydream_pc` (WoL) + `shell_command.shutdown_drydream_pc` (SSH)
-- **Bedroom AC IR** HMS06CBU IP `192.168.1.177` device_id `ebb508d08d4b6d9050vjjr`: `shell_command.ac_bedroom_on/off` → `/config/send_ac_ir.py` → tinytuya local. Toggle: `script.toggle_bedroom_ac` checks `binary_sensor.sthaanaae_rh_ngn_n_contact`. Siri/HomeKit: `switch.bedroom_ac` (template switch, state from same binary_sensor). `script.toggle_bedroom_ac` excluded from HomeKit to avoid conflict. **No cloud.**
+- **Bedroom AC IR** HMS06CBU IP `192.168.1.177` device_id `ebb508d08d4b6d9050vjjr`: `shell_command.ac_bedroom_on/off` → `/config/send_ac_ir.py` → tinytuya local. Toggle: `script.toggle_bedroom_ac` checks `binary_sensor.sthaanaae_rh_ngn_n_contact`. Siri/HomeKit: `switch.ae_rh_ngn_n` "แอร์ห้องนอน" (template switch, `unique_id: bedroom_ac_switch`, state from same binary_sensor). `script.toggle_bedroom_ac` excluded from HomeKit to avoid conflict. **No cloud.**
 - **Living room IR** HMS06CBU IP `192.168.1.174` device_id `eb888f1616078e8d40oyr6`: still Tuya cloud scenes (not yet migrated).
 
 ## tinytuya / IR Blasters
@@ -150,7 +162,7 @@ Mushroom Cards + Layout Card, mobile portrait. No default Lovelace cards.
 
 ## Guardrails
 
-- `.storage/lovelace*`: SSH+Python JSON only, backup first. Never edit other `.storage/` files.
+- `.storage/`: state plan first, backup file before any change. Prefer WebSocket API (`config/entity_registry/*` etc.) over direct file edit; direct edit via SSH+Python JSON only if no API path (stop HA first if file is hot). Never touch `auth*`/`*credentials*`.
 - Always validate before applying. Restart only if required (prefer domain reload).
 - `color_temp` → `color_temp_kelvin` (2026.3+)
 - `panel_iframe` removed 2024.5 → use `type: iframe` card + `type: panel` view
