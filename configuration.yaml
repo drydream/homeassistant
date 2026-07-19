@@ -96,28 +96,6 @@ template:
   - trigger:
       - platform: time_pattern
         minutes: "/1"
-
-      - platform: state
-        entity_id: calendar.drydream_event_s
-
-    action:
-      - service: calendar.get_events
-        target:
-          entity_id: calendar.drydream_event_s
-        data:
-          start_date_time: "{{ (now() - timedelta(days=60)).isoformat() }}"
-          end_date_time: "{{ (now() + timedelta(days=180)).isoformat() }}"
-        response_variable: agenda
-
-    sensor:
-      - name: calendar_events_list
-        state: "{{ now() }}"
-        attributes:
-          events: "{{ agenda['calendar.drydream_event_s'].events }}"
-
-  - trigger:
-      - platform: time_pattern
-        minutes: "/1"
     sensor:
       - name: "Current Time"
         state: "{{ now().strftime('%H:%M') }}"
@@ -364,3 +342,13 @@ lovelace:
       icon: mdi:format-list-bulleted
       show_in_sidebar: true
       filename: dashboards/mylist/mylist.yaml
+
+# ===== Calendar full-history sensor (bypasses HA's built-in -90 day sync limit) =====
+command_line:
+  - sensor:
+      name: calendar_events_list
+      command: "python3 /config/google_calendar_history.py"
+      scan_interval: 300
+      value_template: "{{ now() }}"
+      json_attributes:
+        - events
