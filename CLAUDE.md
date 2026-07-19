@@ -18,7 +18,7 @@
 
 ## Project
 
-HA 2026.5.0 (Docker, Synology NAS). Host `/volume1/docker/homeassistant` → Container `/config`
+HA 2026.7.2 (Docker, Synology NAS). Host `/volume1/docker/homeassistant` → Container `/config`
 
 ## SSH / Docker
 
@@ -53,8 +53,8 @@ sudo /usr/local/bin/docker compose -f /volume1/docker/homeassistant/docker-compo
 | Service | Version | Notes |
 |---------|---------|-------|
 | homeassistant | 2026.7.2 | host network |
-| zigbee2mqtt | 2.10.0 | localhost:1883 |
-| emqx | 6.2.0 | MQTT broker, host network |
+| zigbee2mqtt | 2.12.1 | localhost:1883 |
+| emqx | 6.2.2 | MQTT broker, host network |
 | node-red | 4.1.8-22 | port 1880 |
 | matter-server / homebridge / cloudflared | latest | |
 | vaultwarden | latest | `/volume1/docker/vaultwarden`, port 8222, `https://password.drydream.work` via cloudflared. Backup sidecar → `/volume1/container_backup/vaultwarden` daily, 14-day retention |
