@@ -184,4 +184,8 @@ Dashboard: `/dashboard-calendar`. Source: `calendar.drydream_event_s`. Sensor: `
 
 ## My List
 
-Dashboard: `/dashboard-mylist` (YAML, `dashboards/mylist/mylist.yaml`). Vercel: `https://mydrydreamlistnew.vercel.app/` (iframe). GitHub: `https://github.com/drydream/mydrydreamlist`. Local: `D:\claude-workspace\myprivatelist`. Auth: single-password, `sameSite:none`+`secure:true` cookie required for cross-site POST. Data: Supabase, `lib/actions/items.ts`, all mutations call `revalidatePath('/home')`.
+Self-hosted on NAS (migrated off Vercel+Supabase, branch `feat/selfhost-sqlite` not yet merged to `main`). Docker container `/volume1/docker/myprivatelist`, port `3210`, SQLite at `./data/list.db` (sole data store, no backups yet). Redeploy: `git pull && docker compose up -d --build` in that dir. **No auth — LAN + Tailscale-only, never expose publicly.**
+
+Dashboard: `/dashboard-mylist` (YAML, `dashboards/mylist/mylist.yaml`). Iframe URL: `https://drydream-rella.tail287113.ts.net/home` (Tailscale HTTPS — plain LAN HTTP gets mixed-content-blocked since HA is HTTPS). LAN-only access: `http://192.168.1.170:3210/home`. Tailscale proxy (`tailscale serve --bg --https=443 3210`) is NAS-level config, not in repo — reconfigure if port or tailnet node name changes; needs root, run manually by user.
+
+Local: `D:\claude-workspace\myprivatelist`. Old stack (retired, pending teardown): Vercel `https://mydrydreamlistnew.vercel.app/`, GitHub `https://github.com/drydream/mydrydreamlist`, Supabase.
