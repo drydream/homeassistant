@@ -7,6 +7,9 @@ secrets.yaml
 # --- Databases & Large Files ---
 home-assistant_v2.db*
 
+# --- Secrets ---
+.ssh/
+
 # ❗ เอาออกแล้ว (เพื่อ backup จริง)
 # zigbee.db*
 
