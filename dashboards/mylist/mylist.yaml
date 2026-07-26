@@ -5,5 +5,5 @@ views:
     type: panel
     cards:
       - type: iframe
-        url: https://mydrydreamlistnew.vercel.app/
+        url: https://drydream-rella.tail287113.ts.net/
         aspect_ratio: "100%"

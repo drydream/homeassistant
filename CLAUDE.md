@@ -41,6 +41,12 @@ sudo /usr/local/bin/docker compose -f /volume1/docker/homeassistant/docker-compo
 # If stale name already appears in UI: sudo /usr/syno/bin/synopkg restart ContainerManager
 ```
 
+**After any image update: prune old/unused images.**
+```bash
+sudo /usr/local/bin/docker image prune -f          # dangling <none> layers
+sudo /usr/local/bin/docker rmi <repo>:<old_tag>     # old versioned tags no container uses
+```
+
 - **HA MCP server** configured in Claude Code (user scope, `mcp__homeassistant__*`): entity states + Assist actions via `/api/mcp` — prefer over SSH for state checks/service calls.
 - **hass-mcp** (user scope, `mcp__hass-mcp__*`, uvx): full REST access — all entities, `call_service_tool`, history, `get_error_log`, `search_entities_tool`. Prefer for anything the Assist MCP can't see.
 - **nas-mcp** (user scope, `mcp__nas-mcp__*`, `tools/nas_mcp.py` in this repo, uv run --script): SSH wrapper — `ha_exec`, `ha_logs`, `ha_validate_config`, `container_action`, `nas_exec`. Prefer over raw Bash SSH commands. Raw SSH only as fallback.

@@ -15,6 +15,8 @@ SSH = [
     r"C:\Windows\System32\OpenSSH\ssh.exe",
     "-i", r"C:\Users\DryDrEaM_Champ\.ssh\id_ed25519",
     "-o", "StrictHostKeyChecking=no",
+    "-o", "BatchMode=yes",
+    "-o", "ConnectTimeout=5",
     "drydream@192.168.1.170",
 ]
 DOCKER = "sudo /usr/local/bin/docker"
@@ -24,8 +26,14 @@ mcp = FastMCP("nas-mcp")
 
 
 def _ssh(remote_cmd: str, timeout: int = 120) -> str:
-    r = subprocess.run(SSH + [remote_cmd], capture_output=True, text=True,
-                       encoding="utf-8", errors="replace", timeout=timeout)
+    # stdin=DEVNULL is load-bearing: without it ssh.exe inherits the MCP stdio
+    # pipe and eats protocol messages, wedging the whole server.
+    try:
+        r = subprocess.run(SSH + [remote_cmd], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=timeout,
+                           stdin=subprocess.DEVNULL)
+    except subprocess.TimeoutExpired:
+        return f"[timeout after {timeout}s] {remote_cmd}"
     out = (r.stdout + r.stderr).strip()
     return out if r.returncode == 0 else f"[exit {r.returncode}]\n{out}"
 

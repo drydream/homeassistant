@@ -30,6 +30,7 @@ from .const import (
 )
 from .device import async_delete_device, get_device_id, setup_device
 from .helpers.device_config import get_config
+from .helpers.discovery import async_start_discovery, async_stop_discovery
 from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -960,6 +961,35 @@ async def async_migrate_entry(hass, entry: ConfigEntry):
 
         await async_migrate_entries(hass, entry.entry_id, update_unique_id13_20)
         hass.config_entries.async_update_entry(entry, minor_version=20)
+
+    if entry.version == 13 and entry.minor_version < 21:
+        # Migrate unique ids of existing entities to new id taking into
+        # account translation_key, and standardising naming
+        device_id = get_device_unique_id(entry)
+        conf_file = await hass.async_add_executor_job(
+            get_config,
+            entry.data[CONF_TYPE],
+        )
+        if conf_file is None:
+            _LOGGER.error(
+                NOT_FOUND,
+                entry.data[CONF_TYPE],
+            )
+            return False
+
+        @callback
+        def update_unique_id13_21(entity_entry):
+            """Update the unique id of an entity entry."""
+            # Standardistion of entity naming to use translation_key
+            replacements = {
+                "switch_motion_enable": "switch_motion_detection",
+                "switch_motion_sensing": "switch_motion_detection",
+                "swtich_motion_notification": "switch_motion_detection",
+            }
+            return replace_unique_ids(entity_entry, device_id, conf_file, replacements)
+
+        await async_migrate_entries(hass, entry.entry_id, update_unique_id13_21)
+        hass.config_entries.async_update_entry(entry, minor_version=21)
     return True
 
 
@@ -969,6 +999,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         "Setting up entry for device: %s",
         device_id,
     )
+    # Start background LAN rediscovery so a device that changes IP (e.g. after a
+    # DHCP lease change) is relocated and reconnected without manual
+    # reconfiguration. Safe to call repeatedly; only one sweeper is started.
+    await async_start_discovery(hass)
     config = {**entry.data, **entry.options, "name": entry.title}
     try:
         device = await hass.async_add_executor_job(setup_device, hass, config)
@@ -1030,6 +1064,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     await async_delete_device(hass, config)
     domain_data.pop(device_id, None)
+
+    # Stop the shared rediscovery sweeper once the last device is gone.
+    remaining = [
+        e
+        for e in hass.config_entries.async_entries(DOMAIN)
+        if e.entry_id != entry.entry_id
+    ]
+    if not remaining:
+        async_stop_discovery(hass)
 
     return True
 
