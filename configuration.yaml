@@ -70,9 +70,6 @@ template:
               - action: notify.mobile_app_drydream
                 data:
                   message: "IR บล็อกเตอร์ห้องนอนออฟไลน์ กดปิด/เปิดแอร์ไม่ได้ตอนนี้ ลองถอดปลั๊ก/เสียบใหม่"
-              - action: notify.mobile_app_sm_s908e
-                data:
-                  message: "IR บล็อกเตอร์ห้องนอนออฟไลน์ กดปิด/เปิดแอร์ไม่ได้ตอนนี้ ลองถอดปลั๊ก/เสียบใหม่"
               - stop: "IR blaster offline"
           - action: shell_command.ac_bedroom_on
         turn_off:
@@ -82,9 +79,6 @@ template:
                 state: "off"
             then:
               - action: notify.mobile_app_drydream
-                data:
-                  message: "IR บล็อกเตอร์ห้องนอนออฟไลน์ กดปิด/เปิดแอร์ไม่ได้ตอนนี้ ลองถอดปลั๊ก/เสียบใหม่"
-              - action: notify.mobile_app_sm_s908e
                 data:
                   message: "IR บล็อกเตอร์ห้องนอนออฟไลน์ กดปิด/เปิดแอร์ไม่ได้ตอนนี้ ลองถอดปลั๊ก/เสียบใหม่"
               - stop: "IR blaster offline"

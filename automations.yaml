@@ -324,18 +324,11 @@
         data:
           message: IR บล็อกเตอร์แอร์ห้องนอน (192.168.1.177) หลุดเน็ตเกิน 10 นาที ปุ่มปิด/เปิดแอร์จะใช้ไม่ได้
             ลองถอดปลั๊ก/เสียบใหม่
-      - action: notify.mobile_app_sm_s908e
-        data:
-          message: IR บล็อกเตอร์แอร์ห้องนอน (192.168.1.177) หลุดเน็ตเกิน 10 นาที ปุ่มปิด/เปิดแอร์จะใช้ไม่ได้
-            ลองถอดปลั๊ก/เสียบใหม่
     - conditions:
       - condition: trigger
         id: bedroom_online
       sequence:
       - action: notify.mobile_app_drydream
-        data:
-          message: IR บล็อกเตอร์แอร์ห้องนอนกลับมาออนไลน์แล้ว
-      - action: notify.mobile_app_sm_s908e
         data:
           message: IR บล็อกเตอร์แอร์ห้องนอนกลับมาออนไลน์แล้ว
     - conditions:
@@ -345,17 +338,11 @@
       - action: notify.mobile_app_drydream
         data:
           message: IR บล็อกเตอร์ห้องนั่งเล่น (192.168.1.174) หลุดเน็ตเกิน 10 นาที
-      - action: notify.mobile_app_sm_s908e
-        data:
-          message: IR บล็อกเตอร์ห้องนั่งเล่น (192.168.1.174) หลุดเน็ตเกิน 10 นาที
     - conditions:
       - condition: trigger
         id: living_room_online
       sequence:
       - action: notify.mobile_app_drydream
-        data:
-          message: IR บล็อกเตอร์ห้องนั่งเล่นกลับมาออนไลน์แล้ว
-      - action: notify.mobile_app_sm_s908e
         data:
           message: IR บล็อกเตอร์ห้องนั่งเล่นกลับมาออนไลน์แล้ว
   mode: single
