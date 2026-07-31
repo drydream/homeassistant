@@ -203,94 +203,159 @@
       linked_entities:
       - switch.h_ngnmaachanlaang_left
       - switch.h_ngnmaachanlaang_right
-
 - id: living_room_ss_motion_webhook
-  alias: "SS Webhook → เปิด living_room_motion + restart timer"
+  alias: SS Webhook → เปิด living_room_motion + restart timer
   mode: restart
   triggers:
-    - trigger: webhook
-      webhook_id: living_room_ss_motion
-      allowed_methods:
-        - POST
-      local_only: true
+  - trigger: webhook
+    webhook_id: living_room_ss_motion
+    allowed_methods:
+    - POST
+    local_only: true
   actions:
-    - action: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.living_room_motion
-    - action: timer.start
-      target:
-        entity_id: timer.living_room_motion
-
-- id: living_room_ss_motion_timer_finished
-  alias: "Timer หมด → ปิด living_room_motion"
-  mode: single
-  triggers:
-    - trigger: event
-      event_type: timer.finished
-      event_data:
-        entity_id: timer.living_room_motion
-  actions:
-    - action: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.living_room_motion
-
-- id: living_room_no_motion_notify
-  alias: "แจ้งเตือนไฟ/พัดลมห้องนั่งเล่น — ไม่มีการเคลื่อนไหวนาน 30 นาที"
-  mode: single
-  triggers:
-    - trigger: state
+  - action: input_boolean.turn_on
+    target:
       entity_id: input_boolean.living_room_motion
-      to: "off"
-      for: "00:30:00"
-  conditions:
-    - condition: or
-      conditions:
-        - condition: state
-          entity_id: switch.aifaethwbnh_ngnangeln_l2
-          state: "on"
-        - condition: state
-          entity_id: switch.aifaethwbnh_ngnangeln_l3
-          state: "on"
-        - condition: state
-          entity_id: switch.phadlmh_ngnangeln
-          state: "on"
-        - condition: state
-          entity_id: switch.aifh_ngchakphaa_right
-          state: "on"
-  actions:
-    - action: notify.mobile_app_drydream
-      data:
-        message: "ไม่มีการเคลื่อนไหวในห้องนั่งเล่นนาน 30 นาที ไฟ/พัดลมยังเปิดอยู่ ปิดด้วยไหม?"
-        data:
-          actions:
-            - action: TURN_OFF_LIVING_ROOM
-              title: "ปิดเลย"
-            - action: KEEP_LIVING_ROOM_ON
-              title: "ไม่ต้อง"
-    - action: notify.mobile_app_sm_s908e
-      data:
-        message: "ไม่มีการเคลื่อนไหวในห้องนั่งเล่นนาน 30 นาที ไฟ/พัดลมยังเปิดอยู่ ปิดด้วยไหม?"
-        data:
-          actions:
-            - action: TURN_OFF_LIVING_ROOM
-              title: "ปิดเลย"
-            - action: KEEP_LIVING_ROOM_ON
-              title: "ไม่ต้อง"
-
-- id: living_room_turn_off_from_notify
-  alias: "ปิดไฟ/พัดลมห้องนั่งเล่น — จาก notification"
+  - action: timer.start
+    target:
+      entity_id: timer.living_room_motion
+- id: living_room_ss_motion_timer_finished
+  alias: Timer หมด → ปิด living_room_motion
   mode: single
   triggers:
-    - trigger: event
-      event_type: mobile_app_notification_action
-      event_data:
-        action: TURN_OFF_LIVING_ROOM
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.living_room_motion
+  actions:
+  - action: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.living_room_motion
+- id: living_room_no_motion_notify
+  alias: แจ้งเตือนไฟ/พัดลมห้องนั่งเล่น — ไม่มีการเคลื่อนไหวนาน 30 นาที
+  mode: single
+  triggers:
+  - trigger: state
+    entity_id: input_boolean.living_room_motion
+    to: 'off'
+    for: 00:30:00
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: switch.aifaethwbnh_ngnangeln_l2
+      state: 'on'
+    - condition: state
+      entity_id: switch.aifaethwbnh_ngnangeln_l3
+      state: 'on'
+    - condition: state
+      entity_id: switch.phadlmh_ngnangeln
+      state: 'on'
+    - condition: state
+      entity_id: switch.aifh_ngchakphaa_right
+      state: 'on'
+  actions:
+  - action: notify.mobile_app_drydream
+    data:
+      message: ไม่มีการเคลื่อนไหวในห้องนั่งเล่นนาน 30 นาที ไฟ/พัดลมยังเปิดอยู่ ปิดด้วยไหม?
+      data:
+        actions:
+        - action: TURN_OFF_LIVING_ROOM
+          title: ปิดเลย
+        - action: KEEP_LIVING_ROOM_ON
+          title: ไม่ต้อง
+  - action: notify.mobile_app_sm_s908e
+    data:
+      message: ไม่มีการเคลื่อนไหวในห้องนั่งเล่นนาน 30 นาที ไฟ/พัดลมยังเปิดอยู่ ปิดด้วยไหม?
+      data:
+        actions:
+        - action: TURN_OFF_LIVING_ROOM
+          title: ปิดเลย
+        - action: KEEP_LIVING_ROOM_ON
+          title: ไม่ต้อง
+- id: living_room_turn_off_from_notify
+  alias: ปิดไฟ/พัดลมห้องนั่งเล่น — จาก notification
+  mode: single
+  triggers:
+  - trigger: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: TURN_OFF_LIVING_ROOM
   conditions: []
   actions:
-    - action: homeassistant.turn_off
-      target:
-        entity_id:
-          - switch.aifaethwbnh_ngnangeln_l2
-          - switch.aifaethwbnh_ngnangeln_l3
-          - switch.phadlmh_ngnangeln
-          - switch.aifh_ngchakphaa_right
+  - action: homeassistant.turn_off
+    target:
+      entity_id:
+      - switch.aifaethwbnh_ngnangeln_l2
+      - switch.aifaethwbnh_ngnangeln_l3
+      - switch.phadlmh_ngnangeln
+      - switch.aifh_ngchakphaa_right
+- id: bedroom_ir_blaster_offline_notify
+  alias: แจ้งเตือน IR บล็อกเตอร์ห้องนอนออฟไลน์
+  triggers:
+  - id: bedroom_offline
+    trigger: state
+    entity_id: binary_sensor.bedroom_ir_blaster
+    to: 'off'
+    for: 00:10:00
+  - id: bedroom_online
+    trigger: state
+    entity_id: binary_sensor.bedroom_ir_blaster
+    to: 'on'
+    for: 00:02:00
+  - id: living_room_offline
+    trigger: state
+    entity_id: binary_sensor.living_room_ir_blaster
+    to: 'off'
+    for: 00:10:00
+  - id: living_room_online
+    trigger: state
+    entity_id: binary_sensor.living_room_ir_blaster
+    to: 'on'
+    for: 00:02:00
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: bedroom_offline
+      sequence:
+      - action: notify.mobile_app_drydream
+        data:
+          message: IR บล็อกเตอร์แอร์ห้องนอน (192.168.1.177) หลุดเน็ตเกิน 10 นาที ปุ่มปิด/เปิดแอร์จะใช้ไม่ได้
+            ลองถอดปลั๊ก/เสียบใหม่
+      - action: notify.mobile_app_sm_s908e
+        data:
+          message: IR บล็อกเตอร์แอร์ห้องนอน (192.168.1.177) หลุดเน็ตเกิน 10 นาที ปุ่มปิด/เปิดแอร์จะใช้ไม่ได้
+            ลองถอดปลั๊ก/เสียบใหม่
+    - conditions:
+      - condition: trigger
+        id: bedroom_online
+      sequence:
+      - action: notify.mobile_app_drydream
+        data:
+          message: IR บล็อกเตอร์แอร์ห้องนอนกลับมาออนไลน์แล้ว
+      - action: notify.mobile_app_sm_s908e
+        data:
+          message: IR บล็อกเตอร์แอร์ห้องนอนกลับมาออนไลน์แล้ว
+    - conditions:
+      - condition: trigger
+        id: living_room_offline
+      sequence:
+      - action: notify.mobile_app_drydream
+        data:
+          message: IR บล็อกเตอร์ห้องนั่งเล่น (192.168.1.174) หลุดเน็ตเกิน 10 นาที
+      - action: notify.mobile_app_sm_s908e
+        data:
+          message: IR บล็อกเตอร์ห้องนั่งเล่น (192.168.1.174) หลุดเน็ตเกิน 10 นาที
+    - conditions:
+      - condition: trigger
+        id: living_room_online
+      sequence:
+      - action: notify.mobile_app_drydream
+        data:
+          message: IR บล็อกเตอร์ห้องนั่งเล่นกลับมาออนไลน์แล้ว
+      - action: notify.mobile_app_sm_s908e
+        data:
+          message: IR บล็อกเตอร์ห้องนั่งเล่นกลับมาออนไลน์แล้ว
+  mode: single

@@ -91,8 +91,10 @@ Remote: `https://github.com/drydream/homeassistant` (named `github`, not `origin
 - Google Calendar, Telegram bot, TTS (Google, Thai)
 - YTMD (PC `192.168.1.186:9863`) — see YTMD section
 - DryDrEaM PC: `switch.drydream_pc` (WoL) + `shell_command.shutdown_drydream_pc` (SSH)
-- **Bedroom AC IR** HMS06CBU IP `192.168.1.177` device_id `ebb508d08d4b6d9050vjjr`: `shell_command.ac_bedroom_on/off` → `/config/send_ac_ir.py` → tinytuya local. Toggle: `script.toggle_bedroom_ac` checks `binary_sensor.sthaanaae_rh_ngn_n_contact`. Siri/HomeKit: `switch.ae_rh_ngn_n` "แอร์ห้องนอน" (template switch, `unique_id: bedroom_ac_switch`, state from same binary_sensor). `script.toggle_bedroom_ac` excluded from HomeKit to avoid conflict. **No cloud.**
-- **Living room IR** HMS06CBU IP `192.168.1.174` device_id `eb888f1616078e8d40oyr6`: still Tuya cloud scenes (not yet migrated).
+- **Bedroom AC IR** HMS06CBU IP `192.168.1.177` device_id `ebb508d08d4b6d9050vjjr`: `shell_command.ac_bedroom_on/off` → `/config/send_ac_ir.py` (3s socket timeout, exits 1 on failure) → tinytuya local. Toggle: `script.toggle_bedroom_ac` checks `binary_sensor.sthaanaae_rh_ngn_n_contact`. Siri/HomeKit: `switch.ae_rh_ngn_n` "แอร์ห้องนอน" (template switch, `unique_id: bedroom_ac_switch`, state from same binary_sensor). `script.toggle_bedroom_ac` excluded from HomeKit to avoid conflict. **No cloud.**
+  Reachability: `binary_sensor.bedroom_ir_blaster` (ping integration, config-entry-based). Toggle script + template switch turn_on/turn_off both guard on this sensor first — if offline, push-notify both phones and stop instead of hanging silently. Automation `automation.bedroom_ir_blaster_offline_notify` also alerts if offline >10min / recovered (covers both bedroom + living-room blasters).
+  **Known failure mode:** after a power outage, WiFi module can reconnect in a half-alive state (answers UDP broadcast/tinytuya deviceScan, but ARP/unicast dead — `ping`/`errno 113`). Fix: unplug 30-60s (quick replug isn't always enough), recheck `binary_sensor.bedroom_ir_blaster`.
+- **Living room IR** HMS06CBU IP `192.168.1.174` device_id `eb888f1616078e8d40oyr6`: still Tuya cloud scenes (not yet migrated). Reachability: `binary_sensor.living_room_ir_blaster`, same offline-notify automation.
 
 ## tinytuya / IR Blasters
 
@@ -187,5 +189,7 @@ Dashboard: `/dashboard-calendar`. Source: `calendar.drydream_event_s`. Sensor: `
 Self-hosted on NAS (migrated off Vercel+Supabase, branch `feat/selfhost-sqlite` not yet merged to `main`). Docker container `/volume1/docker/myprivatelist`, port `3210`, SQLite at `./data/list.db` (sole data store, no backups yet). Redeploy: `git pull && docker compose up -d --build` in that dir. **No auth — LAN + Tailscale-only, never expose publicly.**
 
 Dashboard: `/dashboard-mylist` (YAML, `dashboards/mylist/mylist.yaml`). Iframe URL: `https://drydream-rella.tail287113.ts.net/home` (Tailscale HTTPS — plain LAN HTTP gets mixed-content-blocked since HA is HTTPS). LAN-only access: `http://192.168.1.170:3210/home`. Tailscale proxy (`tailscale serve --bg --https=443 3210`) is NAS-level config, not in repo — reconfigure if port or tailnet node name changes; needs root, run manually by user.
+
+Iframe card has `disable_sandbox: true` set — without it, HA sandboxes the iframe with `allow-popups` but no `allow-popups-to-escape-sandbox`, so `target="_blank"` links (e.g. YouTube links in item URLs) open as sandboxed/opaque-origin popups and get `ERR_BLOCKED_BY_RESPONSE` from sites enforcing COOP.
 
 Local: `D:\claude-workspace\myprivatelist`. Old stack (retired, pending teardown): Vercel `https://mydrydreamlistnew.vercel.app/`, GitHub `https://github.com/drydream/mydrydreamlist`, Supabase.

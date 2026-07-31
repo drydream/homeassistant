@@ -16,6 +16,11 @@ if not code:
     sys.exit(1)
 
 d = tinytuya.Device(DEVICE_ID, IP, LOCAL_KEY, version=3.3)
+d.set_socketTimeout(3)
+d.set_socketRetryLimit(1)
 payload = json.dumps({'control': 'send_ir', 'type': 0, 'head': '', 'key1': '1' + code})
 result = d.set_value(201, payload)
+if isinstance(result, dict) and result.get('Error'):
+    print(f'failed to send {action}: {result}')
+    sys.exit(1)
 print(f'sent {action}: {result}')

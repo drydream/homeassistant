@@ -1,17 +1,28 @@
 toggle_bedroom_ac:
-  alias: "Toggle แอร์ห้องนอน"
+  alias: Toggle แอร์ห้องนอน
   mode: single
   sequence:
-    - choose:
-        - conditions:
-            - condition: state
-              entity_id: binary_sensor.sthaanaae_rh_ngn_n_contact
-              state: "on"
-          sequence:
-            - action: shell_command.ac_bedroom_off
-      default:
-        - action: shell_command.ac_bedroom_on
-
+  - if:
+    - condition: state
+      entity_id: binary_sensor.bedroom_ir_blaster
+      state: 'off'
+    then:
+    - action: notify.mobile_app_drydream
+      data:
+        message: IR บล็อกเตอร์ห้องนอนออฟไลน์ กดปิด/เปิดแอร์ไม่ได้ตอนนี้ ลองถอดปลั๊ก/เสียบใหม่
+    - action: notify.mobile_app_sm_s908e
+      data:
+        message: IR บล็อกเตอร์ห้องนอนออฟไลน์ กดปิด/เปิดแอร์ไม่ได้ตอนนี้ ลองถอดปลั๊ก/เสียบใหม่
+    - stop: IR blaster offline
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.sthaanaae_rh_ngn_n_contact
+        state: 'on'
+      sequence:
+      - action: shell_command.ac_bedroom_off
+    default:
+    - action: shell_command.ac_bedroom_on
 open_door_for_4_seconds:
   alias: เปิดรั้วนิดเดียว
   mode: single
@@ -61,51 +72,68 @@ delete_calendar_event:
   mode: single
   fields:
     event_id:
-      description: ID ของ event
+      description: Google Calendar event id
+      selector:
+        text:
   sequence:
-  - target:
-      entity_id: calendar.my_calendar
+  - action: shell_command.delete_calendar_event
     data:
       event_id: '{{ event_id }}'
-    action: calendar.delete_event
-  description: ''
+  - delay: 00:00:02
+  - action: homeassistant.update_entity
+    target:
+      entity_id: sensor.calendar_events_list
+set_event_status:
+  alias: set_event_status
+  mode: single
+  fields:
+    event_id:
+      description: Google Calendar event id
+      selector:
+        text:
+    status:
+      description: planning | ongoing | done
+      selector:
+        select:
+          options:
+          - planning
+          - ongoing
+          - done
+  sequence:
+  - action: shell_command.set_event_status
+    data:
+      event_id: '{{ event_id }}'
+      status: '{{ status }}'
+  - delay: 00:00:02
+  - action: homeassistant.update_entity
+    target:
+      entity_id: sensor.calendar_events_list
 load_event_for_edit:
   alias: โหลดกิจกรรมเพื่อแก้ไข
   mode: single
   fields:
-    event_index:
-      description: ลำดับกิจกรรมในรายการที่กรองแล้ว (เริ่มจาก 0)
+    event_id:
+      description: Google Calendar event id
       selector:
-        number:
-          min: 0
-          max: 49
+        text:
   sequence:
-    - variables:
-        the_event: >
-          {% set year_filter = states('input_select.calendar_year_filter') %}
-          {% set month_filter = states('input_select.calendar_month_filter') %}
-          {% set all_evts = state_attr('sensor.calendar_events_list', 'events') | sort(attribute='start') %}
-          {% set ns = namespace(items=[]) %}
-          {% for e in all_evts %}
-            {% set yr = as_timestamp(e.start, 0) | timestamp_custom('%Y', true) %}
-            {% set mn = as_timestamp(e.start, 0) | timestamp_custom('%B', true) %}
-            {% if (year_filter == 'All' or yr == year_filter) and (month_filter == 'All' or mn == month_filter) %}
-              {% set ns.items = ns.items + [e] %}
-            {% endif %}
-          {% endfor %}
-          {{ ns.items[event_index | int] }}
-    - action: input_text.set_value
-      target:
-        entity_id: input_text.note_text
-      data:
-        value: "{{ the_event.summary }}"
-    - action: input_text.set_value
-      target:
-        entity_id: input_text.note_description
-      data:
-        value: "{{ the_event.description | default('') }}"
-    - action: input_datetime.set_datetime
-      target:
-        entity_id: input_datetime.note_date
-      data:
-        date: "{{ the_event.start[:10] }}"
+  - variables:
+      the_event: "{{ state_attr('sensor.calendar_events_list', 'events')\n   | selectattr('id',
+        'eq', event_id) | list | first | default(none) }}\n"
+  - condition: template
+    value_template: '{{ the_event is not none }}'
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.note_text
+    data:
+      value: '{{ the_event.summary }}'
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.note_description
+    data:
+      value: '{{ the_event.description | default('''') }}'
+  - action: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.note_date
+    data:
+      date: '{{ the_event.start[:10] }}'

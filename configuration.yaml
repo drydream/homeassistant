@@ -62,8 +62,32 @@ template:
         icon: mdi:air-conditioner
         state: "{{ is_state('binary_sensor.sthaanaae_rh_ngn_n_contact', 'on') }}"
         turn_on:
+          - if:
+              - condition: state
+                entity_id: binary_sensor.bedroom_ir_blaster
+                state: "off"
+            then:
+              - action: notify.mobile_app_drydream
+                data:
+                  message: "IR บล็อกเตอร์ห้องนอนออฟไลน์ กดปิด/เปิดแอร์ไม่ได้ตอนนี้ ลองถอดปลั๊ก/เสียบใหม่"
+              - action: notify.mobile_app_sm_s908e
+                data:
+                  message: "IR บล็อกเตอร์ห้องนอนออฟไลน์ กดปิด/เปิดแอร์ไม่ได้ตอนนี้ ลองถอดปลั๊ก/เสียบใหม่"
+              - stop: "IR blaster offline"
           - action: shell_command.ac_bedroom_on
         turn_off:
+          - if:
+              - condition: state
+                entity_id: binary_sensor.bedroom_ir_blaster
+                state: "off"
+            then:
+              - action: notify.mobile_app_drydream
+                data:
+                  message: "IR บล็อกเตอร์ห้องนอนออฟไลน์ กดปิด/เปิดแอร์ไม่ได้ตอนนี้ ลองถอดปลั๊ก/เสียบใหม่"
+              - action: notify.mobile_app_sm_s908e
+                data:
+                  message: "IR บล็อกเตอร์ห้องนอนออฟไลน์ กดปิด/เปิดแอร์ไม่ได้ตอนนี้ ลองถอดปลั๊ก/เสียบใหม่"
+              - stop: "IR blaster offline"
           - action: shell_command.ac_bedroom_off
 
       - name: "ปลั้กข้างประตู"
@@ -274,6 +298,8 @@ shell_command:
     DryDrEaM_Champ@192.168.1.186 "shutdown /s /t 0"
   ac_bedroom_on: "python3 /config/send_ac_ir.py on"
   ac_bedroom_off: "python3 /config/send_ac_ir.py off"
+  delete_calendar_event: "python3 /config/delete_calendar_event.py {{ event_id }}"
+  set_event_status: "python3 /config/set_event_status.py {{ event_id }} {{ status }}"
 
 # ===== TTS =====
 tts:
