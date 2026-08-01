@@ -18,7 +18,7 @@
 
 ## Project
 
-HA 2026.7.2 (Docker, Synology NAS). Host `/volume1/docker/homeassistant` → Container `/config`
+HA 2026.7.4 (Docker, Synology NAS). Host `/volume1/docker/homeassistant` → Container `/config`
 
 ## SSH / Docker
 
@@ -41,11 +41,13 @@ sudo /usr/local/bin/docker compose -f /volume1/docker/homeassistant/docker-compo
 # If stale name already appears in UI: sudo /usr/syno/bin/synopkg restart ContainerManager
 ```
 
-**After any image update: prune old/unused images.**
+**After any image update: prune old/unused images (mandatory, every time — no exceptions) + update version in Services table below.**
 ```bash
-sudo /usr/local/bin/docker image prune -f          # dangling <none> layers
-sudo /usr/local/bin/docker rmi <repo>:<old_tag>     # old versioned tags no container uses
+sudo /usr/local/bin/docker rmi <repo>:<old_tag>     # old versioned tags no container uses, run first
+sudo /usr/local/bin/docker image prune -f           # then dangling <none> layers
 ```
+
+**Synology Container Manager UI has its own project registry, separate from Docker itself.** A compose file created/run via SSH (`docker compose up -d`) works fine and shows up in `docker compose ls`, but stays invisible in the Container Manager GUI's Project tab until manually imported: Container Manager → Project → Create → set path to the existing folder → "Use existing docker-compose.yml". As of 2026-08-01, `homeassistant` was the only project registered this way in the GUI; `cloudflare`, `vaultwarden`, `nut` were created via SSH and had to be imported after the fact. `myprivatelist` is still SSH-only/unregistered in the GUI.
 
 - **HA MCP server** configured in Claude Code (user scope, `mcp__homeassistant__*`): entity states + Assist actions via `/api/mcp` — prefer over SSH for state checks/service calls.
 - **hass-mcp** (user scope, `mcp__hass-mcp__*`, uvx): full REST access — all entities, `call_service_tool`, history, `get_error_log`, `search_entities_tool`. Prefer for anything the Assist MCP can't see.
@@ -58,12 +60,14 @@ sudo /usr/local/bin/docker rmi <repo>:<old_tag>     # old versioned tags no cont
 
 | Service | Version | Notes |
 |---------|---------|-------|
-| homeassistant | 2026.7.2 | host network |
-| zigbee2mqtt | 2.12.1 | localhost:1883 |
+| homeassistant | 2026.7.4 | host network |
+| zigbee2mqtt | 2.13.0 | localhost:1883 |
 | emqx | 6.2.2 | MQTT broker, host network |
 | node-red | 4.1.8-22 | port 1880 |
-| matter-server / homebridge / cloudflared | latest | |
+| matter-server / homebridge | latest | |
+| cloudflared | 2026.7.3 | `/volume1/docker/cloudflare` (own compose project, token in `.env`, `network_mode: host` — required, HA trusted_proxies only allows `192.168.1.170`) — was standalone `docker run` w/ token in cmd args, migrated 2026-08-01 |
 | vaultwarden | latest | `/volume1/docker/vaultwarden`, port 8222, `https://password.drydream.work` via cloudflared. Backup sidecar → `/volume1/container_backup/vaultwarden` daily, 14-day retention |
+| nut | 2.8.2 (self-built) | `/volume1/docker/nut`, UPS monitor, `build: .` (alpine:3.20 base) — rebuilds image on every Container Manager project (re)create |
 
 ## EMQX
 
@@ -88,6 +92,7 @@ Remote: `https://github.com/drydream/homeassistant` (named `github`, not `origin
 - LG WebOS TV: `media_player.lg_webos_tv_65un7200ptf`
 - Roborock vacuum, Mitsubishi washer
 - Tapo C225 living room (IP `192.168.1.173`, SS cam ID 1): motion via **SS webhook** → `input_boolean.living_room_motion` + `timer.living_room_motion` (5min) → `living_room_no_motion_notify` after 30min off with lights on
+- **Cameras (Synology SS, ONVIF)**: `camera.living_room` = SS proxy for C225 (dashboard card entity — snapshot-only more-info, matches carport style, no live video/breadcrumb). `camera.living_room_native` = Tapo direct integration for C225 (live video, community integration, not used on dashboard). `camera.carport` = Tapo C320WS (IP `192.168.1.111`, device_id `98:25:4a:e4:bb:d5`) via SS ONVIF port 2020. Both recorded to `/volume1/surveillance/<name>/`, 30-day retention, 2/2 free SS camera licenses used. Dashboard cards (`dashboard-home`, `responsive-ui`) live under the "ห้องนั่งเล่น" (living_room) and "รั้ว/ประตู" (carport) sections respectively.
 - Google Calendar, Telegram bot, TTS (Google, Thai)
 - YTMD (PC `192.168.1.186:9863`) — see YTMD section
 - DryDrEaM PC: `switch.drydream_pc` (WoL) + `shell_command.shutdown_drydream_pc` (SSH)
@@ -193,3 +198,7 @@ Dashboard: `/dashboard-mylist` (YAML, `dashboards/mylist/mylist.yaml`). Iframe U
 Iframe card has `disable_sandbox: true` set — without it, HA sandboxes the iframe with `allow-popups` but no `allow-popups-to-escape-sandbox`, so `target="_blank"` links (e.g. YouTube links in item URLs) open as sandboxed/opaque-origin popups and get `ERR_BLOCKED_BY_RESPONSE` from sites enforcing COOP.
 
 Local: `D:\claude-workspace\myprivatelist`. Old stack (retired, pending teardown): Vercel `https://mydrydreamlistnew.vercel.app/`, GitHub `https://github.com/drydream/mydrydreamlist`, Supabase.
+
+## Plugin Update Check
+
+NAS DSM Task Scheduler (`Control Panel → Task Scheduler`, weekly Mon 09:00, root, user-defined script) runs `/volume1/docker/homeassistant/scripts/ha-skill-check.sh`, which checks the `home-assistant-skills` repo's `main` branch via `git ls-remote` and, if the SHA changed since last check (tracked in `/volume1/docker/homeassistant/.ha_skill_last_sha`, only written on a successful notify), POSTs to HA webhook `ha_skill_update_check` → automation `ha_skill_update_check` in `automations.yaml` → mobile push notification. No auto-apply — when notified, run `claude plugin update home-assistant-skills@home-assistant-skills` manually, then summarize the changelog (git log in `~/.claude/plugins/marketplaces/home-assistant-skills`) — restart required to take effect.

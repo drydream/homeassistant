@@ -20,6 +20,7 @@ tts/
 __pycache__/
 *.pyc
 .DS_Store
+.ha_skill_last_sha
 
 .storage/
 

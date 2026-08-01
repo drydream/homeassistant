@@ -167,33 +167,6 @@
     action: switch.turn_on
     data: {}
   mode: single
-- id: '1756394707955'
-  alias: เปิด L2 เมื่อเจอการเคลื่อนไหว
-  description: ''
-  triggers:
-  - entity_id: binary_sensor.motion1_presence
-    to: 'on'
-    trigger: state
-  actions:
-  - action: switch.turn_on
-    data: {}
-    target:
-      entity_id: switch.aifh_ngkhraw
-  mode: restart
-- id: '1756394707956'
-  alias: ปิด L2 เมื่อไม่มีการเคลื่อนไหว 30 วินาที
-  description: ''
-  triggers:
-  - entity_id: binary_sensor.motion1_presence
-    to: 'off'
-    for: 00:00:30
-    trigger: state
-  actions:
-  - action: switch.turn_off
-    data: {}
-    target:
-      entity_id: switch.aifh_ngkhraw
-  mode: single
 - id: '1769596784656'
   alias: ไฟห้องน้ำชั้นล่าง
   description: ''
@@ -346,3 +319,47 @@
         data:
           message: IR บล็อกเตอร์ห้องนั่งเล่นกลับมาออนไลน์แล้ว
   mode: single
+- id: ups_power_outage_notify
+  alias: แจ้งเตือนไฟดับ (UPS Zircon)
+  mode: single
+  triggers:
+  - id: on_battery
+    trigger: state
+    entity_id: sensor.zircon_status
+    to: On Battery
+  - id: back_online
+    trigger: state
+    entity_id: sensor.zircon_status
+    from: On Battery
+    to: Online
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: on_battery
+      sequence:
+      - action: notify.mobile_app_drydream
+        data:
+          message: ไฟดับ! NAS กำลังใช้ไฟจาก UPS (Zircon) อยู่ จะ shutdown อัตโนมัติถ้าแบตเหลือน้อย
+    - conditions:
+      - condition: trigger
+        id: back_online
+      sequence:
+      - action: notify.mobile_app_drydream
+        data:
+          message: ไฟกลับมาแล้ว UPS Zircon กลับสู่สถานะปกติ
+- id: ha_skill_update_check
+  alias: Update available (NAS check - skills/HA/Z2M/EMQX)
+  mode: single
+  triggers:
+  - trigger: webhook
+    webhook_id: ha_skill_update_check
+    allowed_methods:
+    - POST
+    local_only: true
+  conditions: []
+  actions:
+  - action: notify.mobile_app_drydream
+    data:
+      message: "{{ trigger.json.message | default('unknown update') }}"
