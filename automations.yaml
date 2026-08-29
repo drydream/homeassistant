@@ -324,14 +324,17 @@
   mode: single
   triggers:
   - id: on_battery
-    trigger: state
-    entity_id: sensor.zircon_status
-    to: On Battery
+    trigger: template
+    value_template: "{{ 'On Battery' in states('sensor.zircon_status') }}"
   - id: back_online
-    trigger: state
-    entity_id: sensor.zircon_status
-    from: On Battery
-    to: Online
+    trigger: template
+    value_template: >-
+      {{ 'On Battery' not in states('sensor.zircon_status')
+         and states('sensor.zircon_status') not in ['unknown', 'unavailable'] }}
+    # Debounce brownout flapping (2026-08-28 outage flapped OL<->OB ~6x). Only
+    # notify "power back" once mains is stably up for 2 min. on_battery stays
+    # immediate — outage news is time-critical.
+    for: "00:02:00"
   conditions: []
   actions:
   - choose:
@@ -345,10 +348,46 @@
     - conditions:
       - condition: trigger
         id: back_online
+      # Guard: only when we actually came FROM an on-battery state. Without this,
+      # unavailable->Online (every HA restart / NUT reconnect) also fires.
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none
+             and 'On Battery' in trigger.from_state.state }}
       sequence:
       - action: notify.mobile_app_drydream
         data:
           message: ไฟกลับมาแล้ว UPS Zircon กลับสู่สถานะปกติ
+- id: ups_battery_safe_shutdown
+  # entity_id stays automation.ups_aichaebt_5_naathii_shutdown_pc_nas (registered).
+  alias: UPS ใช้แบต 2 นาที - shutdown NAS
+  mode: single
+  triggers:
+  # 2 min on battery: this degraded battery raised its own LOWBATT at ~5.5 min in
+  # the 2026-08-28 test, and synopoweroff -s on a 5-bay takes several minutes — a
+  # 5 min trigger left no margin. PC is not on the UPS so it is not shut down here.
+  - id: sustained_2min
+    trigger: template
+    value_template: "{{ 'On Battery' in states('sensor.zircon_status') }}"
+    for: "00:02:00"
+  - id: ha_start
+    trigger: homeassistant
+    event: start
+  conditions: []
+  actions:
+  # HA that boots mid-outage never sees the false->true transition, so the 'for:'
+  # trigger can't arm. On that path wait 2 min first — at the start event the NUT
+  # integration hasn't polled yet (sensor still unavailable), so checking any
+  # earlier always fails. The template check below covers both trigger paths.
+  - if: "{{ trigger.id == 'ha_start' }}"
+    then:
+    - delay: "00:02:00"
+  - condition: template
+    value_template: "{{ 'On Battery' in states('sensor.zircon_status') }}"
+  - action: notify.mobile_app_drydream
+    data:
+      message: UPS ไฟดับต่อเนื่อง 2 นาที — สั่ง shutdown NAS
+  - action: shell_command.nas_safe_shutdown
 - id: ha_skill_update_check
   alias: Update available (NAS check - skills/HA/Z2M/EMQX)
   mode: single
@@ -363,3 +402,45 @@
   - action: notify.mobile_app_drydream
     data:
       message: "{{ trigger.json.message | default('unknown update') }}"
+- id: washer_done_notify
+  alias: เครื่องซักผ้าเสร็จแล้ว - แจ้งเตือนมือถือ
+  description: ''
+  mode: single
+  triggers:
+  - trigger: state
+    entity_id: event.ekhruue_ngchakphaa_notification
+  conditions:
+  - condition: state
+    entity_id: event.ekhruue_ngchakphaa_notification
+    attribute: event_type
+    state: washing_is_complete
+  actions:
+  - action: notify.mobile_app_drydream
+    data:
+      title: เครื่องซักผ้า
+      message: ซักผ้าเสร็จแล้ว
+  - action: notify.mobile_app_sm_s908e
+    data:
+      title: เครื่องซักผ้า
+      message: ซักผ้าเสร็จแล้ว
+- id: door_lock_battery_low_notify
+  alias: แจ้งเตือนแบตประตูบ้านต่ำ (Aqara A100)
+  mode: queued
+  triggers:
+  - id: low20
+    trigger: numeric_state
+    entity_id: sensor.aqara_smart_lock_a100_battery
+    below: 20
+  - id: low10
+    trigger: numeric_state
+    entity_id: sensor.aqara_smart_lock_a100_battery
+    below: 10
+  conditions: []
+  actions:
+  - action: notify.mobile_app_drydream
+    data:
+      title: แบตประตูบ้าน
+      message: >-
+        {% if trigger.id == 'low10' %}🪫 แบตล็อกประตู Aqara A100 เหลือ {{ trigger.to_state.state }}%
+        — เปลี่ยนถ่าน AA ด่วน ก่อนล็อกดับ{% else %}🔋 แบตล็อกประตู Aqara A100 เหลือ
+        {{ trigger.to_state.state }}% — เตรียมเปลี่ยนถ่าน AA{% endif %}

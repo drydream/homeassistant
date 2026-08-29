@@ -8,6 +8,7 @@ DSM Task Scheduler (task id 3 `claude-ha-skill-update`, Control Panel → Task S
 → `/volume1/docker/homeassistant/scripts/ha-skill-check.sh`
 → (1) `git ls-remote` against the skills repo's `main` branch; SHA changed since last check (tracked in `/volume1/docker/homeassistant/.ha_skill_last_sha`, written **only** on a successful notify) → flag
 → (2) `GET /repos/<owner>/<repo>/releases/latest` for HA/Z2M/EMQX vs version pinned in `docker-compose.yml`; flagged only if `sort -V` puts the release above the pinned version (not just "different" — see gotcha below)
+→ (3) runs `/volume1/docker/matter/backup-matter.sh` (cold backup of matter-server fabric keys → `/volume1/container_backup/matter/`, 4 kept); only flags on failure. See `docs/matter-recovery.md`
 → POST to HA webhook `ha_skill_update_check`
 → automation `ha_skill_update_check` in `automations.yaml`
 → mobile push notification

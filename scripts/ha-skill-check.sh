@@ -22,8 +22,15 @@ check_release() {
     # $1=display name  $2=owner/repo  $3=currently pinned version
     latest=$(curl -s "https://api.github.com/repos/$2/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
     latest="${latest#v}"
+    # GitHub's /releases/latest is most-recently-*published*, not highest semver.
+    # Repos with parallel release branches (e.g. emqx 6.1.x/6.2.x) can publish an
+    # older-branch patch after a newer one, making "latest" look like a downgrade.
+    # Only flag if it's actually newer than what's pinned.
     if [ -n "$latest" ] && [ "$latest" != "$3" ]; then
-        add_msg "$1: $3 -> $latest"
+        highest=$(printf '%s\n%s\n' "$3" "$latest" | sort -V | tail -1)
+        if [ "$highest" = "$latest" ]; then
+            add_msg "$1: $3 -> $latest"
+        fi
     fi
 }
 
@@ -34,6 +41,9 @@ EMQX_CUR=$(sed -n 's#.*emqx/emqx:\([0-9.]*\).*#\1#p' "$COMPOSE" | head -1)
 check_release "Home Assistant" "home-assistant/core" "$HA_CUR"
 check_release "Zigbee2MQTT" "Koenkk/zigbee2mqtt" "$Z2M_CUR"
 check_release "EMQX" "emqx/emqx" "$EMQX_CUR"
+
+# 3. weekly cold backup of matter-server fabric keys (chip.json corruption recovery)
+/volume1/docker/matter/backup-matter.sh || add_msg "matter backup FAILED"
 
 [ -z "$MSG" ] && exit 0
 
