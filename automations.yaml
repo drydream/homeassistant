@@ -264,18 +264,8 @@
       - switch.phadlmh_ngnangeln
       - switch.aifh_ngchakphaa_right
 - id: bedroom_ir_blaster_offline_notify
-  alias: แจ้งเตือน IR บล็อกเตอร์ห้องนอนออฟไลน์
+  alias: แจ้งเตือน IR บล็อกเตอร์ห้องนั่งเล่นออฟไลน์
   triggers:
-  - id: bedroom_offline
-    trigger: state
-    entity_id: binary_sensor.bedroom_ir_blaster
-    to: 'off'
-    for: 00:10:00
-  - id: bedroom_online
-    trigger: state
-    entity_id: binary_sensor.bedroom_ir_blaster
-    to: 'on'
-    for: 00:02:00
   - id: living_room_offline
     trigger: state
     entity_id: binary_sensor.living_room_ir_blaster
@@ -289,21 +279,6 @@
   conditions: []
   actions:
   - choose:
-    - conditions:
-      - condition: trigger
-        id: bedroom_offline
-      sequence:
-      - action: notify.mobile_app_drydream
-        data:
-          message: IR บล็อกเตอร์แอร์ห้องนอน (192.168.1.177) หลุดเน็ตเกิน 10 นาที ปุ่มปิด/เปิดแอร์จะใช้ไม่ได้
-            ลองถอดปลั๊ก/เสียบใหม่
-    - conditions:
-      - condition: trigger
-        id: bedroom_online
-      sequence:
-      - action: notify.mobile_app_drydream
-        data:
-          message: IR บล็อกเตอร์แอร์ห้องนอนกลับมาออนไลน์แล้ว
     - conditions:
       - condition: trigger
         id: living_room_offline

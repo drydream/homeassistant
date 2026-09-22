@@ -2,24 +2,9 @@ toggle_bedroom_ac:
   alias: Toggle แอร์ห้องนอน
   mode: single
   sequence:
-  - if:
-    - condition: state
-      entity_id: binary_sensor.bedroom_ir_blaster
-      state: 'off'
-    then:
-    - action: notify.mobile_app_drydream
-      data:
-        message: IR บล็อกเตอร์ห้องนอนออฟไลน์ กดปิด/เปิดแอร์ไม่ได้ตอนนี้ ลองถอดปลั๊ก/เสียบใหม่
-    - stop: IR blaster offline
-  - choose:
-    - conditions:
-      - condition: state
-        entity_id: binary_sensor.sthaanaae_rh_ngn_n_contact
-        state: 'on'
-      sequence:
-      - action: shell_command.ac_bedroom_off
-    default:
-    - action: shell_command.ac_bedroom_on
+  - action: switch.toggle
+    target:
+      entity_id: switch.ae_rh_ngn_n
 open_door_for_4_seconds:
   alias: เปิดรั้วนิดเดียว
   mode: single
