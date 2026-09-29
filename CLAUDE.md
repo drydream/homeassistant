@@ -17,6 +17,10 @@
 | Weekly plugin update check | `docs/plugin-update-check.md` |
 | UPS follow-up tasks (executor plan) | `docs/ups-followup-plan.md` |
 | Matter fabric recovery (Aqara lock/hub) | `docs/matter-recovery.md` |
+| Hermes Discord gateway | `docs/hermes-discord.md` |
+| Hermes Thai voice (STT/TTS; Assist status) | `docs/hermes-voice.md` |
+| Wi-Fi/Zigbee tuning and known configure errors | `docs/optimize-2026-08-18.md` |
+| My Private List deployment context | `myprivatelist-context.md` |
 
 ## Current Focus
 
@@ -24,7 +28,7 @@
 
 ## Project
 
-HA 2026.7.4 (Docker, Synology NAS). Host `/volume1/docker/homeassistant` → Container `/config`
+HA 2026.9.4 (Docker, Synology NAS). Host `/volume1/docker/homeassistant` → Container `/config`
 
 ## MCP Tools (prefer over raw SSH)
 
@@ -47,6 +51,8 @@ sudo /usr/local/bin/docker exec homeassistant python -m homeassistant --script c
 sudo /usr/local/bin/docker compose -f /volume1/docker/homeassistant/docker-compose.yml restart homeassistant
 
 # HA version update — stop+rm BEFORE up, never recreate via plain `up -d`.
+# Same rule applies to every Compose service (including `zigbee2mqtt`): a plain
+# recreate can leave Synology Container Manager caching a transient `<id>_<service>` name.
 # (compose recreate renames old container to <id>_homeassistant transiently → Synology
 # Container Manager UI caches the stale name → "container does not exist" on click)
 sudo /usr/local/bin/docker compose -f /volume1/docker/homeassistant/docker-compose.yml pull homeassistant
@@ -67,15 +73,15 @@ sudo /usr/local/bin/docker image prune -f           # then dangling <none>
 
 | Service | Version | Notes |
 |---------|---------|-------|
-| homeassistant | 2026.8.2 | host network |
-| zigbee2mqtt | 2.13.0 | localhost:1883 |
-| emqx | 6.2.2 | MQTT broker, host network. Built-in DB SHA256 auth, ACL `drydream` full + `{deny,all}` fallback, `no_match=deny`, TCP 1883. Dashboard `:18083` |
+| homeassistant | 2026.9.4 | host network |
+| zigbee2mqtt | 2.14.1 | localhost:1883 |
+| emqx | 6.3.1 | MQTT broker, host network. Built-in DB SHA256 auth, ACL `drydream` full + `{deny,all}` fallback, `no_match=deny`, TCP 1883. Dashboard `:18083`. Retained msgs are RAM-only → after restarting emqx alone, restart `zigbee2mqtt` too (else Zigbee entities go unavailable/unknown) |
 | node-red | 4.1.8-22 | port 1880 |
 | matter-server / homebridge | latest | matter-server `/volume1/docker/matter`, host net, ws://localhost:5580. Aqara Hub M100 (bridges A100 lock) commissioned here. `chip.json` = fabric keys; improper shutdown corrupts it → new fabric → `Loaded 0 nodes` → re-commission (see `docs/matter-recovery.md`). Weekly cold backup → `/volume1/container_backup/matter/` via `scripts/ha-skill-check.sh`. |
 | cloudflared | 2026.7.3 | `/volume1/docker/cloudflare`, token in `.env`, `network_mode: host` — **required**, HA trusted_proxies only allows `192.168.1.170` |
 | vaultwarden | latest | `/volume1/docker/vaultwarden`, port 8222, `https://password.drydream.work`. Backup sidecar → `/volume1/container_backup/vaultwarden`, 14-day retention |
 | nut | 2.8.2 (self-built) | `/volume1/docker/nut`, UPS monitor (Zircon AX, `nutdrv_qx`/krauler), `build: .` (alpine:3.20) — rebuilds on every CM project (re)create. **`network_mode: host`** (was `ports: 3493:3493` → stale libnetwork alloc after an improper shutdown blocked restart; host net has no docker-proxy). Host `upsmon` (not DSM native) started at boot by DSM Task Scheduler task `upsmon-autostart` → `sh /volume1/docker/nut/upsmon-boot.sh`, which re-asserts `/etc/ups/upsmon.conf` (DSM restores defaults on pkg update). **SHUTDOWNCMD = `/volume1/docker/nut/shutdown-cmd.sh` → `synopoweroff -s`** (DSM's own ups-safe-shutdown; plain `synoshutdown -s` refuses on "critical operation in progress" — that caused the 2026-08-28 improper shutdown, 44 failed FSD loops). `NOTIFYCMD` = `notify-log.sh` (event log only). `upssched` is BROKEN on this DSM build (timer daemon busy-loops, never fires) → time-based early shutdown is HA automation `ups_battery_safe_shutdown` (`sensor.zircon_status` contains "On Battery" **2 min** → notify + `shell_command.nas_safe_shutdown` = ssh `drydream@.170`, forced-cmd key `ha-nas-safe-shutdown` + sudoers.d/`nut-shutdown`; PC not shut down — not on the UPS). `synopoweroff -s` clean-shutdown verified in the 2026-08-28 input-unplug test (no "improper shutdown" on next boot); upsmon's own hardware-LOWBATT→FSD path is the backstop (fired at ~5.5 min in that test). Durable logs in `/volume1/docker/nut/*.log` (DSM `/var/log` is tmpfs). **Battery degraded — only ~5.5 min runtime at ~16% load**, charge% is fiction; replacement likely, bench test pending. Task 2 (`shutdown.return` for auto-boot after mains restore) proposed but not deployed — see `docs/ups-followup-plan.md`. See `ups_nut_setup` memory. |
-| hermes-agent | 0.20.0 (self-built) | `/volume1/docker/hermes-agent`, `network_mode: host`, `hermes`+`hermes-dashboard` containers, image pre-built (no `build:` in compose — don't recreate-rebuild). Provider `openai-codex` (ChatGPT Plus OAuth, free quota), model `gpt-5.6-terra`, `openai_runtime: auto` → `codex_responses`. **Do not set `codex_app_server`** — it strips every Hermes tool. Telegram gateway live (DM allowlist). HA wired via `HASS_TOKEN` (own token, not hass-mcp's) + `HASS_URL=http://localhost:8123` in `/opt/data/.env` → `ha_*` tools work. Dashboard binds `0.0.0.0:9119` with Basic Auth; Hermes Desktop connects directly to NAS Tailscale IP. DSM Firewall profile `custom` allows PC Tailscale IP then denies all TCP 9119, so NAS LAN IP cannot reach it. The old Windows SSH-tunnel task is disabled. Voice chat (Thai) live: STT Groq whisper-large-v3-turbo (`GROQ_API_KEY` in `/opt/data/.env`), TTS edge-tts `th-TH-PremwadeeNeural` (หญิง; lazy-installed to durable `/opt/data/lazy-packages/`, survives recreate). `/voice tts`\|`on`\|`off` per-chat in Telegram. See `docs/hermes-voice.md` + `hermes_voice_plan` memory. See `hermes_agent_deployment` + `hermes_desktop_direct_tailscale` memories. Not in Container Manager GUI yet. |
+| hermes-agent | 0.20.0 (self-built) | `/volume1/docker/hermes-agent`, `network_mode: host`, `hermes`+`hermes-dashboard` containers, image pre-built (no `build:` in compose — don't recreate-rebuild). Provider `openai-codex` (ChatGPT Plus OAuth, free quota), model `gpt-5.6-terra`, `openai_runtime: auto` → `codex_responses`. **Do not set `codex_app_server`** — it strips every Hermes tool. Telegram + Discord gateways live (user allowlist each). **Active gateway profile = `default` (`/opt/data/config.yaml`)** — profiles `coding`/`daily`/`research` are registered but NOT started (`s6-supervise gateway-<name>` idle, only `gateway-default` has a python proc); edit `/opt/data/config.yaml`, not the profile copies. Discord: bundled plugin `plugins/platforms/discord/` (discord.py 2.7.1 in image, no lazy-install), bot "JARVIS" app id `1544336773633810452` in guild `drydream` (283605828504649728), `DISCORD_BOT_TOKEN`+`DISCORD_ALLOWED_USERS=122670170857668608` in `/opt/data/.env`, `platforms.discord.enabled: true` + `platform_toolsets.discord` mirrors telegram's list. All tuning is `DISCORD_*` env (defaults fine): `REQUIRE_MENTION=true` (channels silent till @JARVIS), `AUTO_THREAD=true` (@mention spawns a thread), `THREAD_REQUIRE_MENTION=false`. Session key `agent:main:discord:thread:<id>:<id>` → every thread / channel = its own full-context session (`group_sessions_per_user: true` already set). Needs **Message Content + Server Members** privileged intents ON in the Dev Portal or connect fails. `Slash command sync failed: Server disconnected` on boot = transient, self-heals. HA wired via `HASS_TOKEN` (own token, not hass-mcp's) + `HASS_URL=http://localhost:8123` in `/opt/data/.env` → `ha_*` tools work. Dashboard binds `0.0.0.0:9119` with Basic Auth; Hermes Desktop connects directly to NAS Tailscale IP. DSM Firewall profile `custom` allows PC Tailscale IP then denies all TCP 9119, so NAS LAN IP cannot reach it. The old Windows SSH-tunnel task is disabled. Voice chat (Thai) live: STT Groq whisper-large-v3-turbo (`GROQ_API_KEY` in `/opt/data/.env`), TTS edge-tts `th-TH-PremwadeeNeural` (หญิง; lazy-installed to durable `/opt/data/lazy-packages/`, survives recreate). `/voice tts`\|`on`\|`off` per-chat in Telegram. See `docs/hermes-voice.md` + `hermes_voice_plan` memory. See `hermes_agent_deployment` + `hermes_desktop_direct_tailscale` + `hermes_discord_gateway` memories. `docs/hermes-discord.md` = deploy record. Not in Container Manager GUI yet. |
 | nas-operator-mcp | general-purpose (self-built) | `/volume1/docker/nas-operator-mcp`, bearer-auth MCP sidecar on internal network `172.30.99.2:8765`, registered in hermes-agent as `nas-operator`. Tools: `docker_list_containers/docker_status/docker_logs/ha_validate_config/ha_container_logs` (read-only) + `docker_container_action/docker_exec/docker_compose` (Docker, via `docker.sock`) + `nas_exec/nas_read_file/nas_write_file/nas_patch_file` (host ops, via bind-mounted `/volume1/docker`+`/volume1/homes` for files, privileged `nas-operator-nsenter:latest` container for host exec/compose) + `hermes_exec` (Hermes CLI) + fixed `configure_token_profiles/configure_profile_souls`. Every mutation requires MCP elicitation accept (verified: decline→no state change, accept→verified write, both round-tripped through hermes container). Secret-path regex + explicit vaultwarden-data-dir block on file tools; read-only host/container commands run without a prompt via a fixed allowlist, everything else needs approval. See `nas_operator_mcp_general_refactor` memory. |
 
 ## Git
@@ -92,9 +98,9 @@ Remote `https://github.com/drydream/homeassistant` (named `github`, not `origin`
 - **Tapo C225 living room** (`192.168.1.173`, SS cam ID 1): motion via SS webhook → `input_boolean.living_room_motion` + `timer.living_room_motion` (5min) → `living_room_no_motion_notify` after 30min off with lights on
 
 **Cameras** (Synology Surveillance Station, ONVIF) — 2/2 free licenses used, both recorded to `/volume1/surveillance/<name>/`, 30-day retention:
-- `camera.living_room` — SS proxy for the C225. **The dashboard card entity** (snapshot-only more-info, matches carport style)
-- `camera.living_room_native` — Tapo direct integration for the same C225 (live video, not on any dashboard)
-- `camera.carport` — Tapo C320WS (`192.168.1.111`, device_id `98:25:4a:e4:bb:d5`) via SS ONVIF port 2020
+⚠️ **Never put an SS-proxied camera on a dashboard with `camera_view: live`.** HA's stream worker wedges on SS RTSP (`rtsp://syno:<StmKey>@192.168.1.170:554/Sms=N.unicast`): the worker thread blocks in PyAV, so `_stop()`'s `_thread.join()` never returns, `Stream._start_stop_lock` stays held, and **every later `camera/stream` hangs forever with no error and no log** — the card freezes on its last frame. Recovery without restarting HA: `POST /api/config/config_entries/entry/01JX4TXA6JEXA9ZYDPXCGDSA52/reload`. Diagnosed 2026-09-03; **not** a Cloudflare problem (reproduced identically over Tailscale direct).
+- Dashboard cards use the **direct** camera entities: `camera.living_room_native` (Tapo, C225 `.173`) and `camera.carport_native` (ONVIF entry `carport_direct`, C320WS `192.168.1.111:2020`, user `Drydream`, device_id `98:25:4a:e4:bb:d5`)
+- `camera.living_room` / `camera.carport` — SS proxies, kept for recording + motion only, off every dashboard
 - Cards live under sections "ห้องนั่งเล่น" / "รั้ว/ประตู" in `dashboard-home` + `responsive-ui`
 
 ## YTMD

@@ -310,7 +310,9 @@
                             "fan_only": "Ventilation",
                             "heat": "Air Chaud",
                             "floor_cool": "Sol froid",
-                            "floor_heat": "Sol chaud"
+                            "floor_heat": "Sol chaud",
+                            "air_floor_cool": "Air et sol froid",
+                            "air_floor_heat": "Air et sol chaud"
                         }
                     }
                 }
@@ -411,6 +413,9 @@
         "event": {
             "alarm": {
                 "name": "Alarme"
+            },
+            "notification": {
+                "name": "Notification"
             }
         },
         "humidifier": {
@@ -790,6 +795,7 @@
                 "state": {
                     "cancel": "Annuler",
                     "continuous": "Continu",
+                    "custom": "Personnalisé",
                     "5s": "5 secondes",
                     "10s": "10 secondes",
                     "15s": "15 secondes",
@@ -862,7 +868,13 @@
                     "4d": "4 jours",
                     "5d": "5 jours",
                     "6d": "6 jours",
-                    "7d": "7 jours"
+                    "7d": "7 jours",
+                    "10d": "10 jours",
+                    "30d": "30 jours",
+                    "60d": "60 jours",
+                    "90d": "90 jours",
+                    "160d": "160 jours",
+                    "365d": "365 jours"
                 }
             },
             "temperature_unit": {
@@ -1152,6 +1164,12 @@
             "ambient_temperature": {
                 "name": "Température ambiante"
             },
+            "inlet_temperature": {
+                "name": "Température d'entrée"
+            },
+            "outlet_temperature": {
+                "name": "Température de sortie"
+            },
             "cleanliness": {
                 "name": "Propreté",
                 "state": {
@@ -1169,6 +1187,17 @@
                     "poor": "Mauvais",
                     "severe": "Grave",
                     "danger": "Danger"
+                }
+            },
+            "sd_status": {
+                "name": "État de la carte SD",
+                "state": {
+                    "fault": "Défaut",
+                    "formatting": "Formatage",
+                    "full": "Plein",
+                    "missing": "Manquant",
+                    "normal": "Normal",
+                    "unformatted": "Non formaté"
                 }
             },
             "status": {
@@ -1230,6 +1259,7 @@
                     "occupied": "Occupé",
                     "normal": "Normal",
                     "low": "Faible",
+                    "medium": "Moyen",
                     "high": "Haut",
                     "unwashed": "Non lavé",
                     "pre_washing": "Pré-lavage",
@@ -1249,8 +1279,6 @@
                     "full": "Plein",
                     "empty": "Vide",
                     "missing": "Manquant",
-                    "formatting": "Formatage",
-                    "unformatted": "Non formaté",
                     "failed": "Échoué",
                     "replying": "Répondre",
                     "playback": "Lecture",
@@ -1371,6 +1399,9 @@
                     "off": "Ouvert",
                     "on": "Fermé"
                 }
+            },
+            "camera_record": {
+                "name": "Enregistrement de la caméra"
             },
             "do_not_disturb": {
                 "name": "Ne pas déranger"
