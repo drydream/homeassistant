@@ -48,6 +48,35 @@ const DEFAULT_RATES = {
 
 const VAT_DEFAULT = 7;
 
+function billingTariff(hass, entityId, billingDate) {
+  const entity = hass?.states[entityId];
+  const periods = entity?.attributes.billing_periods;
+  if (!entity || ["unknown", "unavailable"].includes(entity.state) ||
+      entity.attributes.tariff_class !== "1.2" || !Array.isArray(periods) ||
+      !billingDate || !Number.isFinite(new Date(billingDate).getTime())) return null;
+  const date = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date(billingDate));
+  const matches = periods.filter((p) => p.from <= date && date <= p.through);
+  if (matches.length !== 1) return null;
+  const period = matches[0];
+  if (![period.service_charge, period.ft, period.vat].every(Number.isFinite) ||
+      period.service_charge < 0 || period.vat < 0 || !Array.isArray(period.tiers) ||
+      !period.tiers.length) return null;
+  let previous = 0;
+  const tiers = [];
+  for (const [index, tier] of period.tiers.entries()) {
+    const upper = tier.up_to === null ? Infinity : tier.up_to;
+    if (!Number.isFinite(tier.rate) || tier.rate < 0 ||
+        !(Number.isFinite(upper) || upper === Infinity) || upper <= previous ||
+        (upper === Infinity && index !== period.tiers.length - 1)) return null;
+    tiers.push({ upTo: upper, rate: tier.rate });
+    previous = upper;
+  }
+  if (previous !== Infinity) return null;
+  return { tiers, serviceCharge: period.service_charge, ft: period.ft, vat: period.vat };
+}
+
 function tieredEnergyCharge(units, tiers) {
   let remaining = Math.max(0, units);
   let prevLimit = 0;
@@ -318,7 +347,14 @@ class MeaElectricBillCard extends HTMLElement {
       vat: Number(config.vat ?? VAT_DEFAULT),
       entities,
       rates: config.rates || {},
+      tariff_entity: config.tariff_entity || "",
     };
+    if (this._config.tariff_entity && (scheme !== "normal" || this._config.tariff_class !== "1.2")) {
+      throw new Error("tariff_entity supports MEA normal tariff 1.2 only");
+    }
+    if (this._config.tariff_entity && !entities.bill_cycle) {
+      throw new Error("entities.bill_cycle is required with tariff_entity");
+    }
     if (!this._period) this._period = defaultPeriod;
     this._lastFetch = 0;
     this._render();
@@ -352,6 +388,14 @@ class MeaElectricBillCard extends HTMLElement {
     const cfg = this._config;
     const now = new Date();
     const { start, end } = getPeriodStart(this._period || "cycle", cfg.cutoff_day, now);
+
+    if ((this._period || "cycle") === "cycle" && cfg.entities.bill_cycle && cfg.scheme === "normal" && !cfg.entities.pv_total) {
+      this._cycleStart = start;
+      this._cycleEnd = end;
+      this._selfConsumed = null;
+      this._render();
+      return;
+    }
 
     const totalEntities = toArray(cfg.entities.total);
     const segmentsPerEntity = await Promise.all(
@@ -388,8 +432,16 @@ class MeaElectricBillCard extends HTMLElement {
 
   _calcBill() {
     const cfg = this._config;
-    const vat = cfg.vat;
-    const ft = cfg.ft_satang / 100; // satang -> baht per unit
+    const invalid = (error) => ({ units: null, lines: [], total: null, savings: null, error });
+    const billingDate = this._period === "prev_cycle"
+      ? this._cycleEnd
+      : this._hass?.states[cfg.entities.bill_cycle]?.attributes.next_reset;
+    const tariff = cfg.tariff_entity ? billingTariff(this._hass, cfg.tariff_entity, billingDate) : null;
+    if (cfg.tariff_entity && !tariff) {
+      return invalid("ไม่มีอัตรา MEA ที่ยืนยันแล้วสำหรับงวดนี้ — ตรวจเซนเซอร์อัตราค่าไฟ");
+    }
+    const vat = tariff ? tariff.vat : cfg.vat;
+    const ft = tariff ? tariff.ft : cfg.ft_satang / 100; // satang -> baht per unit
     let units;
     let energyCharge;
     let serviceCharge;
@@ -399,9 +451,15 @@ class MeaElectricBillCard extends HTMLElement {
 
     if (cfg.scheme === "normal") {
       const rateSet =
+        tariff ||
         (cfg.rates.normal && cfg.rates.normal[cfg.tariff_class]) ||
         DEFAULT_RATES.normal[cfg.tariff_class];
       units = this._usage && this._usage.units != null ? this._usage.units : 0;
+      if ((this._period || "cycle") === "cycle" && cfg.entities.bill_cycle) {
+        const raw = this._hass?.states[cfg.entities.bill_cycle]?.state;
+        units = typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
+        if (!Number.isFinite(units) || units < 0) return invalid("ไม่มีข้อมูลหน่วยไฟรอบบิล");
+      }
       energyCharge = tieredEnergyCharge(units, rateSet.tiers);
       serviceCharge = rateSet.serviceCharge;
       lines.push([`Energy (${units.toFixed(2)} units, tiered)`, energyCharge]);
@@ -434,7 +492,7 @@ class MeaElectricBillCard extends HTMLElement {
 
     const ftCharge = units * ft;
     lines.push(["Service charge", serviceCharge]);
-    lines.push(["Ft adjustment", ftCharge]);
+    lines.push([`Ft (${(ft * 100).toFixed(2)} สต./หน่วย)`, ftCharge]);
     const subtotal = energyCharge + serviceCharge + ftCharge;
     const vatAmount = subtotal * (vat / 100);
     lines.push([`VAT (${vat}%)`, vatAmount]);
@@ -537,9 +595,10 @@ class MeaElectricBillCard extends HTMLElement {
           <span class="scheme-badge">${this._config.scheme === "tou" ? "TOU" : "Normal"}</span>
         </div>
         <div class="tabs">${tabs}</div>
+        ${bill.error ? `<div role="status">${bill.error}</div>` : ""}
         <table>
           ${rows}
-          <tr class="total-row"><td>Estimated total</td><td class="num">${bill.total.toFixed(2)} ฿</td></tr>
+          <tr class="total-row"><td>Estimated total</td><td class="num">${bill.total === null ? "—" : bill.total.toFixed(2) + " ฿"}</td></tr>
         </table>
         ${savingsBlock}
       </ha-card>
@@ -701,6 +760,7 @@ class MeaElectricBillCardEditor extends HTMLElement {
         <label>Name</label>
         <input id="name" type="text" value="${cfg.name}" />
       </div>
+      ${cfg.tariff_entity ? '<div class="row hint">อัตรา, Ft และ VAT อ่านจากเซนเซอร์อัตรากลางตามงวดบิล ค่าด้านล่างไม่มีผลขณะใช้ tariff_entity</div>' : ""}
       <div class="two-col">
         <div class="row">
           <label>Scheme</label>

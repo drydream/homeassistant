@@ -16,11 +16,6 @@ automation: !include automations.yaml
 script: !include scripts.yaml
 scene: !include scenes.yaml
 
-http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    - 192.168.1.170
-
 # ===== Template entities (switch + sensor + cover + binary_sensor) =====
 template:
   - switch:
@@ -113,6 +108,58 @@ template:
           and day not in range(11, 14) else 'th' }} {{ now().strftime('%B %Y') }}
 
   - sensor:
+      # ponytail: verified snapshots; append each new billing period after checking
+      # MEA/ERC. Unknown future periods stay unavailable instead of reusing old Ft.
+      - name: "MEA Residential Tariff"
+        unique_id: mea_residential_tariff
+        icon: mdi:transmission-tower
+        state: "verified_manual"
+        attributes:
+          tariff_class: "1.2"
+          source: "https://www.mea.or.th/our-services/service-rates/other/D5xEaEwgU"
+          ft_source: "https://erc.or.th/th/automatic/"
+          verified_on: "2026-09-09"
+          billing_periods: >
+            {{ [
+              {'from': '2026-05-01', 'through': '2026-08-31',
+               'tiers': [{'up_to': 150, 'rate': 3.2484}, {'up_to': 400, 'rate': 4.2218}, {'up_to': none, 'rate': 4.4217}],
+               'service_charge': 24.62, 'ft': 0.1623, 'vat': 7},
+              {'from': '2026-09-01', 'through': '2026-12-31',
+               'tiers': [{'up_to': 200, 'rate': 3.0000}, {'up_to': 400, 'rate': 4.1584}, {'up_to': none, 'rate': 4.3583}],
+               'service_charge': 24.62, 'ft': 0.1623, 'vat': 7}
+            ] }}
+
+      - name: "ค่าไฟ (bill cycle)"
+        unique_id: energy_meter_bill_cost
+        unit_of_measurement: "฿"
+        icon: mdi:cash
+        availability: >
+          {% set reset = state_attr('sensor.energy_meter_bill_cycle', 'next_reset') %}
+          {% set billing_date = (as_datetime(reset) | as_local).strftime('%Y-%m-%d') if reset else '' %}
+          {% set periods = state_attr('sensor.mea_residential_tariff', 'billing_periods') or [] %}
+          {{ has_value('sensor.mea_residential_tariff')
+             and is_number(states('sensor.energy_meter_bill_cycle'))
+             and states('sensor.energy_meter_bill_cycle') | float(-1) >= 0
+             and periods | selectattr('from', 'le', billing_date) | selectattr('through', 'ge', billing_date) | list | count == 1 }}
+        state: >
+          {% set kwh = states('sensor.energy_meter_bill_cycle') | float(none) %}
+          {% set reset = state_attr('sensor.energy_meter_bill_cycle', 'next_reset') %}
+          {% set billing_date = (as_datetime(reset) | as_local).strftime('%Y-%m-%d') if reset else '' %}
+          {% set periods = state_attr('sensor.mea_residential_tariff', 'billing_periods') or [] %}
+          {% set matches = periods | selectattr('from', 'le', billing_date) | selectattr('through', 'ge', billing_date) | list %}
+          {% if kwh is not none and kwh >= 0 and matches | count == 1 %}
+            {% set tariff = matches[0] %}
+            {% set charge = namespace(energy=0, previous=0) %}
+            {% for tier in tariff.tiers %}
+              {% set upper = tier.up_to if tier.up_to is not none else kwh %}
+              {% set charge.energy = charge.energy + max(0, min(kwh, upper) - charge.previous) * tier.rate %}
+              {% set charge.previous = upper %}
+            {% endfor %}
+            {{ ((charge.energy + tariff.service_charge + kwh * tariff.ft) * (1 + tariff.vat / 100)) | round(2) }}
+          {% else %}
+            {{ none }}
+          {% endif %}
+
       - name: "Washer Time Remaining Formatted"
         state: >
           {% set finish_raw = states('sensor.ekhruue_ngchakphaa_remaining_time') %}
@@ -139,13 +186,10 @@ template:
       - name: "ประตูรั้ว"
         unique_id: gate_cover_toggle
         device_class: shutter
+        # อ่านจากตัว normalized (trigger-based) ที่คงค่าล่าสุดไว้แล้ว
+        # ไม่อ่าน binary_sensor.gate_controller_gate ตรง ๆ เพราะ dp105=1/11 -> unknown
         state: >
-          {% set s = states('binary_sensor.gate_controller_gate') | lower %}
-          {% if s in ['on','open','opened','unknown','unavailable'] %}
-            open
-          {% else %}
-            closed
-          {% endif %}
+          {{ 'open' if is_state('binary_sensor.sthaanapratuuraw', 'on') else 'closed' }}
         open_cover:
           - service: button.press
             target:
@@ -166,20 +210,28 @@ template:
         device_class: presence
         state: "{{ is_state('device_tracker.ipad_3', 'home') }}"
 
+  # trigger-based: อัปเดตเฉพาะตอนต้นทางเป็น on/off จริง
+  # ตัวคุมรั้วหลุด WiFi แล้วกลับมาด้วย dp105=1 (ลืมตำแหน่ง) -> ต้นทาง unknown ค้าง
+  # แบบ trigger จะไม่ขยับ = คงค่าล่าสุด แทนที่จะเดาว่า "เปิด"
+  - triggers:
+      - trigger: state
+        entity_id: binary_sensor.gate_controller_gate
+        to:
+          - "on"
+          - "off"
+    binary_sensor:
       - name: "gate_controller_gate_normalized"   # <-- ชื่อนี้กำหนด entity_id เป็น binary_sensor.gate_controller_gate_normalized
         unique_id: gate_controller_gate_normalized
         device_class: door
-        # เปิด = on/open/opened/unknown/unavailable, ปิด = อย่างอื่น
-        state: >
-          {% set s = states('binary_sensor.gate_controller_gate') | lower %}
-          {{ s in ['on','open','opened','unknown','unavailable'] }}
+        state: "{{ trigger.to_state.state == 'on' }}"
         attributes:
           friendly_name: "สถานะประตูรั้ว"            # แสดงชื่อเป็นภาษาไทย
-          source_state: "{{ states('binary_sensor.gate_controller_gate') }}"
+          source_state: "{{ trigger.to_state.state }}"
 switch:
   - platform: wake_on_lan
     name: DryDrEaM PC
     mac: "30:56:0F:1A:0E:B7"
+    host: 192.168.1.186          # ping เพื่อรู้สถานะจริง (ไม่งั้น assumed_state ค้างที่ off)
 
 # ===== YouTube Music Desktop (PC) =====
 rest:
@@ -278,6 +330,13 @@ shell_command:
     -o UserKnownHostsFile=/config/.ssh/known_hosts
     -o BatchMode=yes -o ConnectTimeout=5
     DryDrEaM_Champ@192.168.1.186 "shutdown /s /t 0"
+  # NAS UPS safe shutdown. Command is forced by authorized_keys on the NAS
+  # (command="sudo /volume1/docker/nut/shutdown-cmd.sh"), so the arg below is ignored.
+  nas_safe_shutdown: >-
+    ssh -i /config/.ssh/id_ed25519
+    -o UserKnownHostsFile=/config/.ssh/known_hosts
+    -o BatchMode=yes -o ConnectTimeout=5
+    drydream@192.168.1.170 x
   delete_calendar_event: "python3 /config/delete_calendar_event.py {{ event_id }}"
   set_event_status: "python3 /config/set_event_status.py {{ event_id }} {{ status }}"
 
@@ -337,6 +396,11 @@ utility_meter:
   electricity_cost_monthly:
     source: sensor.etaaaiffaa_energy_cost
     cycle: monthly
+  energy_meter_bill_cycle:
+    source: sensor.energy_meter_energy_consumed_a_total
+    cycle: monthly
+    offset:
+      days: 16
 
 # ===== Lovelace =====
 lovelace:
