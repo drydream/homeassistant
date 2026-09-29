@@ -3,6 +3,7 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import date, datetime
 
 CALENDAR_ID = "2c891ae567b92be9efbc16f6de84f6a8654958495bbd71e9ba7770325060f508@group.calendar.google.com"
 TIME_MIN = "2025-01-01T00:00:00Z"
@@ -50,11 +51,22 @@ def main():
 
     events = []
     for it in items:
+        status = it.get("extendedProperties", {}).get("private", {}).get("status", "")
+        if status not in ("planning", "ongoing", "done"):
+            end_v = it["end"].get("dateTime", it["end"].get("date"))
+            if "T" in end_v:
+                is_past = datetime.now().astimezone().isoformat() > end_v
+            else:
+                is_past = date.today().isoformat() >= end_v
+            status = "done" if is_past else "planning"
+
         events.append({
+            "id": it["id"],
             "start": it["start"].get("dateTime", it["start"].get("date")),
             "end": it["end"].get("dateTime", it["end"].get("date")),
             "summary": it.get("summary", ""),
             "description": it.get("description", ""),
+            "status": status,
         })
 
     print(json.dumps({"events": events}, ensure_ascii=False))

@@ -14,7 +14,7 @@ switch.c225_wiper:
   hidden: true
 camera.tapo_c225_2a63_hd_stream:
   hidden: true
-camera.tapo_c225_2a63_sd_stream:
+camera.living_room:
   hidden: true
 button.tapo_c225_2a63_reboot:
   hidden: true

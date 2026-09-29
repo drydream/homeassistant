@@ -3,7 +3,11 @@ views:
   - title: "My List"
     path: mylist
     type: panel
+    visible:
+      - user: a349a20904ad44d69dc23bdab77ae9d7
+      - user: 1e2b9c15e0a7479685e36786747d39a9
     cards:
       - type: iframe
         url: https://drydream-rella.tail287113.ts.net/
         aspect_ratio: "100%"
+        disable_sandbox: true
