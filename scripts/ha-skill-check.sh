@@ -45,6 +45,9 @@ check_release "EMQX" "emqx/emqx" "$EMQX_CUR"
 # 3. weekly cold backup of matter-server fabric keys (chip.json corruption recovery)
 /volume1/docker/matter/backup-matter.sh || add_msg "matter backup FAILED"
 
+# 4. weekly hot backup of My List SQLite (list.db + WAL)
+sh /volume1/docker/homeassistant/scripts/backup-mylist.sh || add_msg "mylist backup FAILED"
+
 [ -z "$MSG" ] && exit 0
 
 if curl -sf -X POST -H "Content-Type: application/json" \
