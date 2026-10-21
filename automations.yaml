@@ -419,3 +419,63 @@
         {% if trigger.id == 'low10' %}🪫 แบตล็อกประตู Aqara A100 เหลือ {{ trigger.to_state.state }}%
         — เปลี่ยนถ่าน AA ด่วน ก่อนล็อกดับ{% else %}🔋 แบตล็อกประตู Aqara A100 เหลือ
         {{ trigger.to_state.state }}% — เตรียมเปลี่ยนถ่าน AA{% endif %}
+- id: lg_devmode_auto_renew
+  alias: LG Dev Mode ต่ออายุอัตโนมัติ (ทุกวัน)
+  mode: single
+  triggers:
+  - trigger: time
+    at: "04:00:00"
+  - trigger: homeassistant
+    event: start
+  conditions: []
+  actions:
+  # Endpoint returns {"result":"success","errorMsg":"<HH:MM:SS remaining>"} even when the
+  # session is already maxed. TV need not be on — renewal is server-side at LGE.
+  - action: rest_command.lg_devmode_renew
+    response_variable: lg
+    continue_on_error: true
+  - if: "{{ lg is not defined or lg.status != 200 or 'success' not in (lg.content | string) }}"
+    then:
+    - action: notify.mobile_app_drydream
+      data:
+        title: LG Dev Mode ต่ออายุไม่สำเร็จ
+        message: >-
+          ต่ออายุ Dev Mode ล้มเหลว (status {{ lg.status if lg is defined else 'no response' }}). token อาจเปลี่ยน —
+          ดึงใหม่: cat /var/luna/preferences/devmode_enabled แล้วอัปเดต
+          secret lg_devmode_renew_url. ตอบกลับ: {{ lg.content if lg is defined else '-' }}
+- id: lg_tv_open_freemytv_on_power
+  alias: ทีวี LG เปิดเครื่อง → เข้า Free My TV
+  description: >-
+    Free My TV ใช้แทนหน้า Home ตอนเปิดทีวี (ปุ่ม Home บนรีโมทยังเป็นของ LG — ต้อง root ถึงจะ remap ได้).
+    ข้ามถ้า Chromecast กำลังทำงาน (ปลุกทีวีจากการ cast) หรือทีวีอยู่ช่อง PS4
+  mode: single
+  triggers:
+  - trigger: state
+    entity_id: media_player.lg_webos_tv_65un7200ptf
+    from: "off"
+    to: "on"
+  conditions: []
+  actions:
+  # Give webOS a moment to settle its boot app (and CEC to switch input) before checking.
+  - delay: "00:00:03"
+  # TV resumes the last input, so source=Chromecast alone doesn't mean a cast woke it.
+  # Skip only while the Chromecast itself is active (it reports "off" when idle).
+  - condition: state
+    entity_id: media_player.family_room_tv
+    state:
+    - "off"
+    - unavailable
+    - unknown
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: media_player.lg_webos_tv_65un7200ptf
+      attribute: source
+      state:
+      - PS4,etc.
+      - Free My TV
+  - action: media_player.select_source
+    target:
+      entity_id: media_player.lg_webos_tv_65un7200ptf
+    data:
+      source: Free My TV

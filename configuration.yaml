@@ -323,6 +323,12 @@ rest_command:
       Content-Type: application/json
     payload: '{"command":"mute"}'
 
+  # LG webOS Dev Mode session renew (resets to 50h). Full URL incl. sessionToken
+  # lives in secrets (gitignored). Token from TV: cat /var/luna/preferences/devmode_enabled
+  lg_devmode_renew:
+    url: !secret lg_devmode_renew_url
+    method: GET
+
 # ===== PC remote control =====
 shell_command:
   shutdown_drydream_pc: >-
