@@ -55,12 +55,12 @@ template:
       - name: "แอร์ห้องนอน"
         unique_id: bedroom_ac_switch
         icon: mdi:air-conditioner
-        state: "{{ is_state('binary_sensor.sthaanaae_rh_ngn_n_contact', 'on') }}"
+        state: "{{ is_state('binary_sensor.bedroom_ac_running', 'on') }}"
         turn_on:
           - action: mqtt.publish
             data:
               topic: zigbee2mqtt/ไออาร์ห้องนอน/set
-              payload: '{"ir_code_to_send": "BZMBkwHRAUAD4AMBQA8L22LhDcwG0QEYBdEBQA/AA8APQAHgBxNAG0ADQAFAB+ABAwCTYAsBkwGAAwMYBdEBQAtAAeADBwWTAfcBkwFABwDRYAFAB0ArQAFAB0APwANAD0ADwA9AB0AB4AMHAZMBgE/AAQKTAdHgCAFAQ4ADgCsDGAXRAUAnQAdAAwGTiuEJB0ABYBsCAdEB4AMDwBNAB0ADQBtAB+ABAwD3YAtAF0ADAxgF0QFAB+ADA0AB4AMP4AML4Asv4AkTBfcBkwHRAUADQAFAB+ADA0ABwA9AAUAL4AMBwE/gBwcAk+ECB0ABAZMBgAPAJ8APQAfAE0AHQAPAE0AL4AMDQBcDkwH3AUATAZMBwAMD9wGTAcALwAfgIRPgB0tAD0ADAZMB4AUDwBNAB0AD4AcfQA9AAUAH4AMDQCvgCwNAI0AXQAfgAQMD9wGTAeADD+AdC0BHQAPgAy9AAUAPQAHAB0ABQAtAK0ADwAFAE4ABQAlAA+ADAeAHD0AB4AETgEcBkwGAB0ABAZMBQANADwUYBZMB0QHAA0ABwAtAB0ABQAfgAQPgBS8CkwHRIAHgAxPACwsYBZMBGAWTAdEB0QE="}'
+              payload: '{"ir_code_to_send": "BJ4B1gGeIAFABeABA0ABD8Fi5A3tBtYBIgWeAZ4B1gHAAwMiBdYBwAvAB8ATQAdAA0AXAiIFniAD4AMHA9YBngGAA0ALAtYBniABQAXgAQMC1gGeIAFABeABAwUiBZ4BngFABwHWAUAHwANAD0ADwA9AAcALwAcC1gGeIAFABeABAwLWAZ4gAUAFgAMCIgWeIAOABwPWAZ4BQAsGngHWASIFniADA9YBrIpBB4ALAp4B1iABAJ4gAQnWASIFngGeAdYB4AMDwBMBIgVAAwOeAZ4BQAdAAwOeASIFwAcFngGeAdYBQAPgAwtAD+ALAwLWAZ4gAUAFAdYBQC8A1iABQAXAA0ATA54B1gHgAwMC1gGeIAFABeABAwLWAZ4gAUAF4AEDAtYBniABQAXgAQPAT0AHBdYBngEiBUAFAdYB4REHAdYBQB8C1gGeIAFABQPWASIFQAUEngEiBdYgAwieAdYBngEiBdYgA0AH4AEDA54B1gFAAwMiBdYBQAfgAwMC1gGeIAFABeABAwLWAZ4gAUAF4BED4AdLQA9AA+AHM8ATQAdAA+AHH+AfD0A7QANAL8AHQAvgMwNAR0AD4BtDQAFAK0AD4Bsv4BcjwEfAB4AvAZ4BQA9AAwGeAeANAwLWAZ4gAUAFgANAAeADLwLWAZ4gAUAFAdYBQBcD1gGeAUAHQAML1gGeASIF1gGeAdYB"}'
         turn_off:
           - action: mqtt.publish
             data:
@@ -200,6 +200,13 @@ template:
               entity_id: button.gate_controller_close
 
   - binary_sensor:
+      # Contact sensor on the AC louver. No delay_off: a stale "on" after power-off made
+      # switch.toggle send the OFF code again (see docs/tuya-ir.md).
+      - name: "bedroom_ac_running"
+        unique_id: bedroom_ac_running
+        device_class: running
+        state: "{{ is_state('binary_sensor.sthaanaae_rh_ngn_n_contact', 'on') }}"
+
       - name: "me_home"
         unique_id: me_home
         device_class: presence
