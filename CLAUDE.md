@@ -118,7 +118,7 @@ Re-auth: POST `/api/v1/auth/requestcode` → user clicks Allow → POST `/api/v1
 | Naey (`rella`) | `1e2b9c15…` | Users |
 | kanomjang | `970a8a37…` | Users, restricted |
 
-`kanomjang` sees only `/dashboard-gate` ("รั้ว/ประตู" — gate + lock + open/close/stop/nudge, no camera). Built from: `visible:` on every view of every other dashboard listing only drydream+Naey; `default_panel: dashboard-gate` in `.storage/frontend.user_data_970a8a37…`; sidebar hidden via kiosk-mode `user_settings` scoped to `kanomjang` (dashboard-level `kiosk_mode:` key in `lovelace.dashboard_gate`).
+`kanomjang` sees only `/dashboard-gate` ("รั้ว/ประตู" — gate + lock + open/close/stop/nudge, no camera). `responsive-ui` has `show_in_sidebar: false` (2026-10-22, unused). Keep `dashboard-gate` in the sidebar and never delete it — kanomjang (หลาน) uses it. Built from: `visible:` on every view of every other dashboard listing only drydream+Naey; `default_panel: dashboard-gate` in `.storage/frontend.user_data_970a8a37…`; sidebar hidden via kiosk-mode `user_settings` scoped to `kanomjang` (dashboard-level `kiosk_mode:` key in `lovelace.dashboard_gate`).
 
 ⚠️ **`visible:` is cosmetic, not access control.** HA docs: *"This is only for the display of the tabs. The URL path is still accessible."* Any logged-in user can reach any dashboard by typing its URL, and the auto-generated `/lovelace` Overview still lists every entity. HA has no per-user entity ACL. This is UX separation for a trusted household member, not a security boundary.
 

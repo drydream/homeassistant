@@ -19,6 +19,9 @@ IEEE → friendly name map (Z2M). Also visible in the Z2M UI at `http://192.168.
 | 0xa4c138e7bd3b8865 | สถานะแอร์ห้องนอน |
 | 0x0cae5ffffefb206a | ไฟห้องครัว |
 | 0x449fdafffe62add1 | ไฟบันไดชั้นล่าง |
+| 0xbc8d7efffe8c511a | ไออาร์ห้องนอน |
+| 0xa4c138f593907f83 | อุณหภูมิห้องนอน (TS0601 `_TZE200_ehhrv2e3`, temp/humidity) → `sensor.bedroom_temperature`, `sensor.bedroom_humidity`, `sensor.bedroom_climate_battery` |
+| 0xa4c1387160a48d43 | อุณหภูมิห้องนั่งเล่น (TS0601 `_TZE200_ehhrv2e3`, temp/humidity) → `sensor.living_room_temperature`, `sensor.living_room_humidity`, `sensor.living_room_climate_battery` |
 
 ## Z2M config
 

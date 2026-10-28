@@ -21,6 +21,12 @@ sudo /usr/local/bin/docker logs matter-server 2>&1 | grep -E "Loaded 0 nodes|All
 - **Neither line** → node is commissioned; problem is elsewhere (hub offline,
   Wi-Fi, HA subscription). Check `get_nodes` `available` flag.
 
+Seen 2026-10-13: hub Wi-Fi half-alive (ARP answers, ICMP/TCP 5540 dead, gone from
+mDNS) → `Subscription failed ... Timeout` ×12 → `Node considered offline`. Fix =
+power-cycle hub 30-60s; server re-discovers + re-subscribes on its own. Lock is a
+sleepy bridged child: check `2/57/17` (Reachable) — may stay `False` until the
+lock is woken (touch keypad / operate it).
+
 Seen 2026-08-28: NAS improper shutdown (UPS event) truncated `chip.json` →
 `[chip.storage] ERROR Expecting value: line 1 column 1 (char 0)` at boot → new
 fabric `A94B59757EAADA76` (was `24561DF2EBB238B6`) → lock `unavailable` for ~18h.
