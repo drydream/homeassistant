@@ -18,6 +18,8 @@ from homeassistant.exceptions import (
     DependencyError,
 )
 from homeassistant.helpers.storage import Store
+from homeassistant.helpers.event import async_track_time_interval
+from functools import partial
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt
 from homeassistant.components.media_source.error import Unresolvable
@@ -45,6 +47,9 @@ from .const import (
     MEDIA_CLEANUP_PERIOD,
     MEDIA_SYNC_COLD_STORAGE_PATH,
     MEDIA_SYNC_HOURS,
+    MEDIA_SYNC_PREVIOUS_STORAGE_PATH,
+    MEDIA_THUMBNAIL_CACHE,
+    MEDIA_THUMBNAIL_PRELOAD,
     MEDIA_VIEW_DAYS_ORDER,
     MEDIA_VIEW_RECORDINGS_ORDER,
     MEDIA_SYNC_WATCHDOG_SECONDS,
@@ -73,6 +78,9 @@ from .utils import (
     convert_to_timestamp,
     deleteDir,
     getColdDirPathForEntry,
+    getConfiguredColdDirPath,
+    moveMediaStorage,
+    cleanupThumbnailCache,
     getDataForController,
     getEntryStorageFile,
     getHotDirPathForEntry,
@@ -488,7 +496,18 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     LOGGER.debug("Unloading tapo_control...")
-    await hass.config_entries.async_unload_platforms(
+    device = hass.data[DOMAIN][entry.entry_id]
+    tasks = {
+        task
+        for item in [device, *device.get("childDevices", [])]
+        for key in ("mediaSyncTask", "manualDownloadTask")
+        if (task := item.get(key)) is not None and not task.done()
+    }
+    for task in tasks:
+        task.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+    unloaded = await hass.config_entries.async_unload_platforms(
         entry,
         [
             "binary_sensor",
@@ -503,6 +522,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "update",
         ],
     )
+    if not unloaded:
+        return False
 
     if "udp_monitor" in hass.data[DOMAIN][entry.entry_id]:
         await hass.data[DOMAIN][entry.entry_id]["udp_monitor"].async_stop()
@@ -591,6 +612,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     """Set up the Tapo: Cameras Control component from a config entry."""
     hass.data.setdefault(DOMAIN, {})
+
+    previousStorage = entry.data.get(MEDIA_SYNC_PREVIOUS_STORAGE_PATH)
+    if previousStorage is not None:
+        try:
+            await hass.async_add_executor_job(
+                moveMediaStorage, previousStorage, getConfiguredColdDirPath(entry)
+            )
+        except (OSError, ValueError) as err:
+            raise ConfigEntryNotReady(f"Unable to move recording storage: {err}") from err
+        data = dict(entry.data)
+        del data[MEDIA_SYNC_PREVIOUS_STORAGE_PATH]
+        hass.config_entries.async_update_entry(entry, data=data)
 
     host = entry.data.get(CONF_IP_ADDRESS)
     controlPort = entry.data.get(CONTROL_PORT)
@@ -740,12 +773,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         or not hass.data[DOMAIN][entry.entry_id]["onvifManagement"]
                     ):
                         # retry if connection to onvif failed
-                        LOGGER.debug("Setting up subscription to motion sensor...")
+                        LOGGER.debug("Retrying ONVIF connection to %s:2020.", host)
                         onvifDevice = await initOnvifEvents(
                             hass, host, username, password
                         )
                         if onvifDevice:
-                            LOGGER.debug(onvifDevice)
+                            LOGGER.debug("ONVIF retry connected to %s:2020.", host)
                             hass.data[DOMAIN][entry.entry_id]["eventsDevice"] = (
                                 onvifDevice["device"]
                             )
@@ -1009,6 +1042,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             "latestFirmwareVersion": False,
             "mediaSyncColdDir": False,
             "mediaSyncHotDir": False,
+            "mediaOptions": {
+                MEDIA_SYNC_COLD_STORAGE_PATH: entry.data.get(
+                    MEDIA_SYNC_COLD_STORAGE_PATH, ""
+                ),
+                MEDIA_THUMBNAIL_CACHE: entry.data.get(MEDIA_THUMBNAIL_CACHE, False),
+                MEDIA_THUMBNAIL_PRELOAD: entry.data.get(MEDIA_THUMBNAIL_PRELOAD, True),
+            },
             "motionSensorCreated": False,
             "eventsDevice": False,
             "onvifManagement": False,
@@ -1157,29 +1197,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         LOGGER.debug("Entities set up.")
 
         # Needs to execute AFTER binary_sensor creation!
+        LOGGER.debug(
+            "ONVIF startup for %s: KLAP=%s, standalone=%s, motion=%s, time_sync=%s.",
+            host,
+            tapoController.isKLAP,
+            camData["childDevices"] in (None, False),
+            motionSensor,
+            enableTimeSync,
+        )
         if (
             tapoController.isKLAP is False
-            and camData["childDevices"] is None
+            and camData["childDevices"] in (None, False)
             and (motionSensor or enableTimeSync)
         ):
             onvifDevice = await initOnvifEvents(hass, host, username, password)
-            hass.data[DOMAIN][entry.entry_id]["eventsDevice"] = onvifDevice["device"]
-            hass.data[DOMAIN][entry.entry_id]["onvifManagement"] = onvifDevice[
-                "device_mgmt"
-            ]
-            if motionSensor:
-                LOGGER.debug("Setting up motion sensor for the first time.")
-                await setupOnvif(hass, entry)
+            if onvifDevice:
+                hass.data[DOMAIN][entry.entry_id]["eventsDevice"] = onvifDevice["device"]
+                hass.data[DOMAIN][entry.entry_id]["onvifManagement"] = onvifDevice[
+                    "device_mgmt"
+                ]
+                if motionSensor:
+                    LOGGER.debug("Setting up motion sensor for the first time.")
+                    await setupOnvif(hass, entry)
+                else:
+                    debugMsg = "Motion sensor is disabled."
+                    if len(username) == 0 or len(password) == 0:
+                        debugMsg += " This is because RTSP username or password is empty."
+                    LOGGER.debug(debugMsg)
+                if enableTimeSync:
+                    try:
+                        await syncTime(hass, entry.entry_id)
+                    except Exception as e:
+                        handleTimeSyncError(e)
             else:
-                debugMsg = "Motion sensor is disabled."
-                if len(username) == 0 or len(password) == 0:
-                    debugMsg += " This is because RTSP username or password is empty."
-                LOGGER.debug(debugMsg)
-            if enableTimeSync:
-                try:
-                    await syncTime(hass, entry.entry_id)
-                except Exception as e:
-                    handleTimeSyncError(e)
+                LOGGER.debug(
+                    "ONVIF initialization failed for %s:2020. Continuing setup; "
+                    "ONVIF will be retried during camera updates.",
+                    host,
+                )
 
         # Media sync
         timeCorrection = await hass.async_add_executor_job(
@@ -1340,6 +1395,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         # Start scanning without waiting for HA startup and the next polling update.
         device = hass.data[DOMAIN][entry.entry_id]
+        entry.async_on_unload(device["update_listener"])
+        await cleanupThumbnailCache(hass, entry)
+        entry.async_on_unload(
+            async_track_time_interval(
+                hass, partial(cleanupThumbnailCache, hass, entry), timedelta(seconds=60)
+            )
+        )
         for scanDevice in [device, *device["childDevices"]]:
             entry.async_create_background_task(
                 hass,
@@ -1348,6 +1410,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             )
 
     except Exception as e:
+        LOGGER.debug(
+            "Tapo integration setup failed for %s (%s): %r",
+            host,
+            type(e).__name__,
+            e,
+            exc_info=True,
+        )
         if "Invalid authentication data" in str(e):
             if hass.data[DOMAIN][entry.entry_id]["setup_retries"] < 3:
                 hass.data[DOMAIN][entry.entry_id]["setup_retries"] += 1
@@ -1365,4 +1434,5 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             )
             raise ConfigEntryNotReady(e)
 
+    LOGGER.debug("Tapo integration setup completed for %s.", host)
     return True
