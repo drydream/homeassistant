@@ -345,7 +345,11 @@
   actions:
   - action: notify.mobile_app_drydream
     data:
+      title: Update available
       message: "{{ trigger.json.message | default('unknown update') }}"
+      data:
+        push:
+          interruption-level: time-sensitive
 - id: washer_done_notify
   alias: เครื่องซักผ้าเสร็จแล้ว - แจ้งเตือนมือถือ
   description: ''

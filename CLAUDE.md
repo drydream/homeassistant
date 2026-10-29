@@ -28,7 +28,7 @@
 
 ## Project
 
-HA 2026.9.4 (Docker, Synology NAS). Host `/volume1/docker/homeassistant` → Container `/config`
+HA 2026.10.4 (Docker, Synology NAS). Host `/volume1/docker/homeassistant` → Container `/config`
 
 ## MCP Tools (prefer over raw SSH)
 
@@ -73,9 +73,9 @@ sudo /usr/local/bin/docker image prune -f           # then dangling <none>
 
 | Service | Version | Notes |
 |---------|---------|-------|
-| homeassistant | 2026.9.4 | host network |
-| zigbee2mqtt | 2.14.1 | localhost:1883 |
-| emqx | 6.3.1 | MQTT broker, host network. Built-in DB SHA256 auth, ACL `drydream` full + `{deny,all}` fallback, `no_match=deny`, TCP 1883. Dashboard `:18083`. Retained msgs are RAM-only → after restarting emqx alone, restart `zigbee2mqtt` too (else Zigbee entities go unavailable/unknown) |
+| homeassistant | 2026.10.4 | host network |
+| zigbee2mqtt | 2.14.2 | localhost:1883 |
+| emqx | 6.3.2 | MQTT broker, host network. Built-in DB SHA256 auth, ACL `drydream` full + `{deny,all}` fallback, `no_match=deny`, TCP 1883. Dashboard `:18083`. Retained msgs are RAM-only → after restarting emqx alone, restart `zigbee2mqtt` too (else Zigbee entities go unavailable/unknown) |
 | node-red | 4.1.8-22 | port 1880 |
 | matter-server / homebridge | latest | matter-server `/volume1/docker/matter`, host net, ws://localhost:5580. Aqara Hub M100 (bridges A100 lock) commissioned here. `chip.json` = fabric keys; improper shutdown corrupts it → new fabric → `Loaded 0 nodes` → re-commission (see `docs/matter-recovery.md`). Weekly cold backup → `/volume1/container_backup/matter/` via `scripts/ha-skill-check.sh`. |
 | cloudflared | 2026.7.3 | `/volume1/docker/cloudflare`, token in `.env`, `network_mode: host` — **required**, HA trusted_proxies only allows `192.168.1.170` |
