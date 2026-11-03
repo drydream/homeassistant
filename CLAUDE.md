@@ -36,6 +36,7 @@ Home `DRYDREAM` + notebook `WIN-KVT0FR290PJ` both open `Z:\homeassistant` (= NAS
 - **Secrets** only in `\\100.103.51.128\champ\ha-secrets\` (`ha.env` = HA_URL/HA_TOKEN, `nas.env`). Never inline secrets in `.mcp.json`, `~/.claude.json`, memory, CLAUDE.md or `.claude/settings*.json`.
 - **MCP servers** in project `.mcp.json` (no user-scope copies). Token loaded at launch by `tools/ha_env.cmd` / `tools/ha_headers.cmd` (CRLF).
 - **Memory** dir on each PC is a symlink → `\\100.103.51.128\champ\claude-memory\homeassistant`.
+- **Global `~/.claude/{CLAUDE,RTK,MACHINES}.md`** on each PC are symlinks → `\\100.103.51.128\champ\claude-global\` (since 2026-11-03). Edit the central copy only. Local SessionStart hook `~/.claude/hooks/check-central-claude.ps1` warns when it is unreachable (Tailscale off). Per-PC still: `settings.json`, plugins, user-scope MCP.
 - **Hosts** by Tailscale IP `100.103.51.128` (works at home and office); SSH uses each PC's default `~/.ssh/id_ed25519` (both authorized), no `-i`.
 
 ## MCP Tools (prefer over raw SSH)
