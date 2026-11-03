@@ -30,6 +30,14 @@
 
 HA 2026.10.4 (Docker, Synology NAS). Host `/volume1/docker/homeassistant` → Container `/config`
 
+## Two PCs, one environment
+
+Home `DRYDREAM` + notebook `WIN-KVT0FR290PJ` both open `Z:\homeassistant` (= NAS `/config`). Everything below must stay machine-agnostic:
+- **Secrets** only in `\\100.103.51.128\champ\ha-secrets\` (`ha.env` = HA_URL/HA_TOKEN, `nas.env`). Never inline secrets in `.mcp.json`, `~/.claude.json`, memory, CLAUDE.md or `.claude/settings*.json`.
+- **MCP servers** in project `.mcp.json` (no user-scope copies). Token loaded at launch by `tools/ha_env.cmd` / `tools/ha_headers.cmd` (CRLF).
+- **Memory** dir on each PC is a symlink → `\\100.103.51.128\champ\claude-memory\homeassistant`.
+- **Hosts** by Tailscale IP `100.103.51.128` (works at home and office); SSH uses each PC's default `~/.ssh/id_ed25519` (both authorized), no `-i`.
+
 ## MCP Tools (prefer over raw SSH)
 
 - **hass-mcp** (`mcp__hass-mcp__*`): full REST — entities, `call_service_tool`, history, `get_error_log`, `search_entities_tool`, dashboard get/set. Primary.
@@ -38,11 +46,11 @@ HA 2026.10.4 (Docker, Synology NAS). Host `/volume1/docker/homeassistant` → Co
 
 ## SSH / Docker
 
-NAS `drydream@192.168.1.170` (uid 1026, gid 100), passwordless sudo via `/etc/sudoers.d/drydream-docker`. Must use full path `/usr/local/bin/docker` for sudo. No SCP — transfer via base64: `echo '<b64>' | base64 -d > /tmp/file`. Container runs as root, so files it writes land root-owned — `chown 1026:100` to match siblings under `www/`.
+NAS `drydream@192.168.1.170` (uid 1026, gid 100), passwordless sudo for everything via `/etc/sudoers.d/drydream-all` (`NOPASSWD: ALL`, added 2026-11-03; older `drydream-docker` file kept). DSM has no `visudo` — edit sudoers.d via `docker run --privileged --pid=host alpine nsenter -t 1 -m -u -i -n`, check with `sudo -n -l`. Use full paths under sudo (`/usr/local/bin/docker`, `/usr/syno/bin/*`) — sudo's PATH lacks them. No SCP — transfer via base64: `echo '<b64>' | base64 -d > /tmp/file`. Container runs as root, so files it writes land root-owned — `chown 1026:100` to match siblings under `www/`.
 
 ```bash
 # Claude Code SSH (Bash tool)
-/c/Windows/System32/OpenSSH/ssh.exe -i /c/Users/DryDrEaM_Champ/.ssh/id_ed25519 -o StrictHostKeyChecking=no drydream@192.168.1.170 "sudo /usr/local/bin/docker exec homeassistant <cmd>"
+/c/Windows/System32/OpenSSH/ssh.exe -o StrictHostKeyChecking=no drydream@100.103.51.128 "sudo /usr/local/bin/docker exec homeassistant <cmd>"
 
 # Validate config
 sudo /usr/local/bin/docker exec homeassistant python -m homeassistant --script check_config -c /config
@@ -76,8 +84,9 @@ sudo /usr/local/bin/docker image prune -f           # then dangling <none>
 | homeassistant | 2026.10.4 | host network |
 | zigbee2mqtt | 2.14.2 | localhost:1883 |
 | emqx | 6.3.2 | MQTT broker, host network. Built-in DB SHA256 auth, ACL `drydream` full + `{deny,all}` fallback, `no_match=deny`, TCP 1883. Dashboard `:18083`. Retained msgs are RAM-only → after restarting emqx alone, restart `zigbee2mqtt` too (else Zigbee entities go unavailable/unknown) |
-| node-red | 4.1.8-22 | port 1880 |
-| matter-server / homebridge | latest | matter-server `/volume1/docker/matter`, host net, ws://localhost:5580. Aqara Hub M100 (bridges A100 lock) commissioned here. `chip.json` = fabric keys; improper shutdown corrupts it → new fabric → `Loaded 0 nodes` → re-commission (see `docs/matter-recovery.md`). Weekly cold backup → `/volume1/container_backup/matter/` via `scripts/ha-skill-check.sh`. |
+| ~~node-red~~ | REMOVED 2026-11-03 | Unused (0 HA nodes). Container `nodered-node-red-2`, image, `/volume1/docker/node-red` deleted; HA tokens revoked. Restore tar: `/volume1/container_backup/node-red/node-red-20261103-pre-remove.tar.gz`. Stale name still in nas-operator `ALLOWED_CONTAINERS` (harmless). |
+| ~~homebridge~~ | REMOVED 2026-11-01 | Was never paired to Apple Home (pairedClients=0) — container/image/`/volume1/docker/homebridge` deleted. Restore tar: `/volume1/container_backup/homebridge/homebridge-20261101-pre-image-swap.tar.gz`. Apple Home gets everything via HASS Bridge; its filter = explicit `include_entities` whitelist (36, set via options flow, backup `.storage/core.config_entries.bak-20261101-homekit-whitelist`) — add new HomeKit entities there. |
+| matter-server | latest | matter-server `/volume1/docker/matter`, host net, ws://localhost:5580. Aqara Hub M100 (bridges A100 lock) commissioned here. `chip.json` = fabric keys; improper shutdown corrupts it → new fabric → `Loaded 0 nodes` → re-commission (see `docs/matter-recovery.md`). Weekly cold backup → `/volume1/container_backup/matter/` via `scripts/ha-skill-check.sh`. |
 | cloudflared | 2026.7.3 | `/volume1/docker/cloudflare`, token in `.env`, `network_mode: host` — **required**, HA trusted_proxies only allows `192.168.1.170` |
 | vaultwarden | latest | `/volume1/docker/vaultwarden`, port 8222, `https://password.drydream.work`. Backup sidecar → `/volume1/container_backup/vaultwarden`, 14-day retention |
 | nut | 2.8.2 (self-built) | `/volume1/docker/nut`, UPS monitor (Zircon AX, `nutdrv_qx`/krauler), `build: .` (alpine:3.20) — rebuilds on every CM project (re)create. **`network_mode: host`** (was `ports: 3493:3493` → stale libnetwork alloc after an improper shutdown blocked restart; host net has no docker-proxy). Host `upsmon` (not DSM native) started at boot by DSM Task Scheduler task `upsmon-autostart` → `sh /volume1/docker/nut/upsmon-boot.sh`, which re-asserts `/etc/ups/upsmon.conf` (DSM restores defaults on pkg update). **SHUTDOWNCMD = `/volume1/docker/nut/shutdown-cmd.sh` → `synopoweroff -s`** (DSM's own ups-safe-shutdown; plain `synoshutdown -s` refuses on "critical operation in progress" — that caused the 2026-08-28 improper shutdown, 44 failed FSD loops). `NOTIFYCMD` = `notify-log.sh` (event log only). `upssched` is BROKEN on this DSM build (timer daemon busy-loops, never fires) → time-based early shutdown is HA automation `ups_battery_safe_shutdown` (`sensor.zircon_status` contains "On Battery" **2 min** → notify + `shell_command.nas_safe_shutdown` = ssh `drydream@.170`, forced-cmd key `ha-nas-safe-shutdown` + sudoers.d/`nut-shutdown`; PC not shut down — not on the UPS). `synopoweroff -s` clean-shutdown verified in the 2026-08-28 input-unplug test (no "improper shutdown" on next boot); upsmon's own hardware-LOWBATT→FSD path is the backstop (fired at ~5.5 min in that test). Durable logs in `/volume1/docker/nut/*.log` (DSM `/var/log` is tmpfs). **Battery degraded — only ~5.5 min runtime at ~16% load**, charge% is fiction; replacement likely, bench test pending. Task 2 (`shutdown.return` for auto-boot after mains restore) proposed but not deployed — see `docs/ups-followup-plan.md`. See `ups_nut_setup` memory. |
@@ -99,7 +108,8 @@ Remote `https://github.com/drydream/homeassistant` (named `github`, not `origin`
 
 **Cameras** (Synology Surveillance Station, ONVIF) — 2/2 free licenses used, both recorded to `/volume1/surveillance/<name>/`, 30-day retention:
 ⚠️ **Never put an SS-proxied camera on a dashboard with `camera_view: live`.** HA's stream worker wedges on SS RTSP (`rtsp://syno:<StmKey>@192.168.1.170:554/Sms=N.unicast`): the worker thread blocks in PyAV, so `_stop()`'s `_thread.join()` never returns, `Stream._start_stop_lock` stays held, and **every later `camera/stream` hangs forever with no error and no log** — the card freezes on its last frame. Recovery without restarting HA: `POST /api/config/config_entries/entry/01JX4TXA6JEXA9ZYDPXCGDSA52/reload`. Diagnosed 2026-09-03; **not** a Cloudflare problem (reproduced identically over Tailscale direct).
-- Dashboard cards use the **direct** camera entities: `camera.living_room_native` (Tapo, C225 `.173`) and `camera.carport_native` (ONVIF entry `carport_direct`, C320WS `192.168.1.111:2020`, user `Drydream`, device_id `98:25:4a:e4:bb:d5`)
+- Dashboard cards use the **direct** camera entities: `camera.living_room_native` (Tapo, C225 `.173`) and `camera.carport_direct_minorstream` (ONVIF entry `carport_direct`, C320WS `192.168.1.111:2020`, user `Drydream`, device_id `98:25:4a:e4:bb:d5`)
+- ⚠️ C320WS allows only **2 RTSP sessions per stream**. SS records `stream1`; HA opens up to 2 more (go2rtc WebRTC + HLS) → on `stream1` the 3rd gets `Operation not permitted` / go2rtc `error=EOF` and live view won't play. So HA cards use sub stream (`stream2`, 640x360, `profile_2`, `camera_view: live`) since 2026-11-02; `camera.carport_native` (main) kept for snapshots only, off dashboards. Backups `.storage/lovelace.{dashboard_home,responsive_ui}.bak-20261102-carport-substream`
 - `camera.living_room` / `camera.carport` — SS proxies, kept for recording + motion only, off every dashboard
 - Cards live under sections "ห้องนั่งเล่น" / "รั้ว/ประตู" in `dashboard-home` + `responsive-ui`
 
