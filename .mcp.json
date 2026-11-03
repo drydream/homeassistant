@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "hass-mcp": {
+      "command": "cmd",
+      "args": ["/c", "Z:\\homeassistant\\tools\\ha_env.cmd", "uvx", "hass-mcp"]
+    },
+    "nas-mcp": {
+      "command": "uv",
+      "args": ["run", "--script", "Z:\\homeassistant\\tools\\nas_mcp.py"]
+    },
+    "homeassistant": {
+      "type": "http",
+      "url": "http://100.103.51.128:8123/api/mcp",
+      "headersHelper": "Z:\\homeassistant\\tools\\ha_headers.cmd"
+    }
+  }
+}

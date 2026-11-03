@@ -1,10 +1,12 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["mcp"]
+# dependencies = ["mcp<2"]  # 2.x renamed FastMCP; pin so both PCs resolve the same
 # ///
 """NAS MCP — token-cheap wrapper over SSH to Synology NAS / HA container.
 
-Registered in Claude Code as `nas-mcp` (stdio). Auth: existing SSH key, no new secrets.
+Registered in Claude Code as `nas-mcp` (stdio) via the project `.mcp.json`.
+Auth: each PC's default ~/.ssh/id_ed25519 (both are authorized on the NAS), no new secrets.
+Host is the NAS Tailscale IP so the same file works from home and office.
 """
 import shlex
 import subprocess
@@ -13,11 +15,10 @@ from mcp.server.fastmcp import FastMCP
 
 SSH = [
     r"C:\Windows\System32\OpenSSH\ssh.exe",
-    "-i", r"C:\Users\DryDrEaM_Champ\.ssh\id_ed25519",
     "-o", "StrictHostKeyChecking=no",
     "-o", "BatchMode=yes",
     "-o", "ConnectTimeout=5",
-    "drydream@192.168.1.170",
+    "drydream@100.103.51.128",
 ]
 DOCKER = "sudo /usr/local/bin/docker"
 COMPOSE_YML = "/volume1/docker/homeassistant/docker-compose.yml"
