@@ -47,6 +47,7 @@ check_release "EMQX" "emqx/emqx" "$EMQX_CUR"
 
 # 4. weekly hot backup of My List SQLite (list.db + WAL)
 sh /volume1/docker/homeassistant/scripts/backup-mylist.sh || add_msg "mylist backup FAILED"
+sh /volume1/docker/homeassistant/scripts/backup-mylist.sh /volume1/container_backup/kanzo /volume1/docker/kanzo/data/kanzo.db || add_msg "kanzo backup FAILED"
 
 [ -z "$MSG" ] && exit 0
 

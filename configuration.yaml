@@ -420,6 +420,12 @@ lovelace:
       icon: mdi:format-list-bulleted
       show_in_sidebar: true
       filename: dashboards/mylist/mylist.yaml
+    dashboard-kanzo:
+      mode: yaml
+      title: "Kanzo"
+      icon: mdi:view-column
+      show_in_sidebar: true
+      filename: dashboards/kanzo/kanzo.yaml
 
 # ===== Calendar full-history sensor (bypasses HA's built-in -90 day sync limit) =====
 command_line:

@@ -1,0 +1,12 @@
+title: "Kanzo"
+views:
+  - title: "Kanzo"
+    path: board
+    type: panel
+    visible:
+      - user: a349a20904ad44d69dc23bdab77ae9d7
+    cards:
+      - type: iframe
+        url: https://drydream-rella.tail287113.ts.net:8443/
+        aspect_ratio: "100%"
+        disable_sandbox: true
