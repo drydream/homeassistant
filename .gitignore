@@ -44,3 +44,6 @@ dwains-dashboard/configs/cards/areas/living_room/CRVMZ2~X
 # --- Local backups / private media ---
 *.bak-*
 www/hermes-camera-test.jpg
+
+# WebRTC Camera downloads its own go2rtc binary
+/go2rtc-*
