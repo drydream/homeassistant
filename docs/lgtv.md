@@ -23,6 +23,17 @@ cd /z/homeassistant/lgtv
 
 Catalog apps (repo.webosbrew.org): install through HB Channel's own service, the TV downloads + checks sha256 + elevates services — `luna-send-pub -i luna://org.webosbrew.hbchannel.service/install '{"ipkUrl":..,"ipkHash":<sha256 from the app manifest>,"subscribe":true}'`. Run it in the background on the TV and poll its output: the subscription never closes by itself and busybox `timeout` does not kill it.
 
+## VNC (see the TV screen)
+
+`org.webosbrew.vncserver` on `192.168.1.115:5900`, 960x540, autostart via `/var/lib/webosbrew/init.d/vncserver` → its `autostart.sh`. Password (8 chars, VNC limit) in `champ\ha-secrets\lgtv-vnc-password`. Screenshot from either PC:
+
+```bash
+python -m venv ~/vncv && ~/vncv/Scripts/pip install vncdotool   # once per PC
+~/vncv/Scripts/vncdo -s 192.168.1.115::5900 -p "$(cat //100.103.51.128/champ/ha-secrets/lgtv-vnc-password)" capture tv.png
+```
+
+After a (re)install its service file may still go through `jailer` → `start` returns `Message status unknown` → run `elevate-service org.webosbrew.vncserver.service` (see Gotchas), then `configure '{"password":"…","autostart":true}'`.
+
 ## Key rotation
 
 Key + passphrase change when the Dev Mode app is reinstalled / re-logged. Open Dev Mode app on the TV (Key Server `:9991` only listens while it is open), then:
@@ -54,4 +65,5 @@ Also update secret `lg_devmode_renew_url` (token in `/var/luna/preferences/devmo
 3. nospy: `init/nospy-ctl.sh set/enable` as root with `domains.updates=on` (its hosts bind-mount replaces HB's update block), thinq/lan.block off (HA needs them).
 4. Aerial screensaver `org.rchalaaa.webos.custom-screensaver` (repack), system `general.screenSaverEnabled=on` via root `luna-send .../settingsservice/setSystemSettings`.
 5. FreeMyTV fork `org.webos.freemytv` from `lgtv/apps/freemytv` (+ `config.js` with HA user **TV** token from secrets).
-6. Shelf: YT, Netflix, Moonfin, Moonlight | Chromecast, Twitch | Browser, Homebrew.
+6. VNCServer + Open Service Menu from HB (one HB install at a time, parallel = `duplicate command`), then the VNC steps above.
+7. Shelf (max 9 tiles, 10 overflows 1920px): YT, Netflix, Moonfin, Moonlight, Twitch | Chromecast | Browser, Homebrew, VNC. Service Menu sits in Customize only.
