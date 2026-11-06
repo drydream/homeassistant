@@ -25,7 +25,7 @@ Catalog apps (repo.webosbrew.org): install through HB Channel's own service, the
 
 ## VNC (see the TV screen)
 
-`org.webosbrew.vncserver` on `192.168.1.115:5900`, 960x540, autostart via `/var/lib/webosbrew/init.d/vncserver` → its `autostart.sh`. Password (8 chars, VNC limit) in `champ\ha-secrets\lgtv-vnc-password`. Screenshot from either PC:
+`org.webosbrew.vncserver` on `192.168.1.115:5900`, 960x540, autostart via `/var/lib/webosbrew/init.d/webos-vncserver` (created by `configure {"autostart":true}`) → its `autostart.sh`. Password (8 chars, VNC limit) in `champ\ha-secrets\lgtv-vnc-password`. Screenshot from either PC:
 
 ```bash
 python -m venv ~/vncv && ~/vncv/Scripts/pip install vncdotool   # once per PC
@@ -63,14 +63,14 @@ Also update secret `lg_devmode_renew_url` (token in `/var/luna/preferences/devmo
 - Root exec scripts must not reach `sh` on stdin (`... | base64 -d | sh`): `luna-send` reads stdin and silently swallows the rest of the script. `tv.sh root` runs `sh -c "<script>" </dev/null`.
 - nospy: `nospy-ctl.sh apply` runs as a background job — poll `status` until `job=done`, read `joblog`.
 - Input Hook UI: never press "Save changes" if it loaded before a file edit — overwrites keybinds with stale data.
-- Dev apps can't call `listLaunchPoints` / `tvpower` → icons pulled via HA (aiowebostv), screensaver test triggered as root.
+- Dev apps can't call `listLaunchPoints` / `tvpower` → icons pulled via HA (aiowebostv); FreeMyTV starts the screensaver through HB root exec after 3 min idle (the system one never starts by itself while a web app is in front).
 
 ## Reinstall checklist (after a Dev Mode wipe)
 
 1. Re-root, HB Channel → check `./tv.sh sh "luna-send-pub -n 1 luna://org.webosbrew.hbchannel.service/getConfiguration '{}'"` → `root:true`, `blockUpdates:true`.
 2. From HB Channel UI: LG Input Hook, Life's Good Without Spying, Moonfin (Jellyfin NAS :8096), Moonlight, YouTube AdFree (official YouTube must be removed as root first, same app id), Twitch AdFree.
 3. nospy: `init/nospy-ctl.sh set/enable` as root with `domains.updates=on` (its hosts bind-mount replaces HB's update block), thinq/lan.block off (HA needs them).
-4. Aerial screensaver `org.rchalaaa.webos.custom-screensaver` (repack), system `general.screenSaverEnabled=on` via root `luna-send .../settingsservice/setSystemSettings`.
+4. Aerial screensaver `org.rchalaaa.webos.custom-screensaver` from the HB catalog (its "-5" was the clock, no repack needed), system `general.screenSaverEnabled=on` via root `luna-send .../settingsservice/setSystemSettings`.
 5. FreeMyTV fork `org.webos.freemytv` from `lgtv/apps/freemytv` (+ `config.js` with HA user **TV** token from secrets).
 6. VNCServer + Open Service Menu from HB (one HB install at a time, parallel = `duplicate command`), then the VNC steps above.
 7. Shelf (max 9 tiles, 10 overflows 1920px): YT, Netflix, Moonfin, Moonlight, Twitch | Chromecast | Browser, Homebrew, VNC. Service Menu sits in Customize only.

@@ -1664,6 +1664,22 @@
         }
         document.addEventListener('visibilitychange', function() { refreshCamera(); });
 
+        // The system screensaver (Aerial, bind-mounted over LG's) never starts on its own while a web
+        // app is in front, so start it after 3 min without a key press. tvpower denies dev apps → via
+        // Homebrew Channel root exec. No clock fallback of our own: it stacked on top of Aerial.
+        const IDLE_TIMEOUT_MS = 3 * 60 * 1000;
+        let lastActivity = Date.now();
+        document.addEventListener('keydown', function() { lastActivity = Date.now(); }, true);
+        document.addEventListener('visibilitychange', function() { lastActivity = Date.now(); });
+        setInterval(function() {
+            if (document.hidden || Date.now() - lastActivity < IDLE_TIMEOUT_MS || !window.webOS || !webOS.service) return;
+            lastActivity = Date.now();  // don't re-fire every tick while the screensaver is up
+            webOS.service.request('luna://org.webosbrew.hbchannel.service', {
+                method: 'exec',
+                parameters: { command: "luna-send -n 1 luna://com.webos.service.tvpower/power/turnOnScreenSaver '{}'" }
+            });
+        }, 15000);
+
         // --- Focus & Spatial Navigation ---
         let mainNavItems = [];
         let curIndex = 0;
