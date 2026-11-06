@@ -37,11 +37,13 @@ Also update secret `lg_devmode_renew_url` (token in `/var/luna/preferences/devmo
 ## Gotchas
 
 - TV sshd needs RSA-SHA1: `-o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa` (else `no mutual signature supported`).
-- `errorCode -5 "ipk verified failed"` is **not** reliably about the file: on 2026-11-06 the same FreeMyTV ipk failed 4× then installed unchanged (with `PmLogCtl set AppInstallD debug` + `pkgVerifier debug` on, which shows nothing useful at info level). Modes (777/666 are normal), ar mtime and odd member size were all ruled out. Retry before rebuilding. Aerial screensaver still fails (upstream ipk too) — pending.
+- `errorCode -5 "ipk verified failed"` is **not** reliably about the file: on 2026-11-06 the same FreeMyTV ipk failed 4× then installed unchanged (with `PmLogCtl set AppInstallD debug` + `pkgVerifier debug` on, which shows nothing useful at info level). Modes (777/666 are normal), ar mtime and odd member size were all ruled out. **Just retry** (aerial: failed 2×, installed on the 3rd, same file).
 - Reinstalling a homebrew app through dev install drops its service elevation → its luna calls return nothing. Fix: `./tv.sh root '/media/developer/apps/usr/palm/services/org.webosbrew.hbchannel.service/elevate-service <service id>'`.
 - Input Hook after a reinstall: `luna-send-pub luna://org.webosbrew.inputhook.service/autostart '{}'` then `/start` (creates `/var/lib/webosbrew/init.d/inputhook`).
 - Dev Mode lapse wipes **every** dev app incl. HB Channel, root does not protect them (2026-10-31). Things outside app dirs survive: `/home/root/.config/lginputhook/keybinds.json`, `/var/lib/webosbrew/*` (startup.sh, nospy state), `/var/luna/preferences/*`.
 - busybox: `timeout -t 45`, not `timeout 45`.
+- Root exec scripts must not reach `sh` on stdin (`... | base64 -d | sh`): `luna-send` reads stdin and silently swallows the rest of the script. `tv.sh root` runs `sh -c "<script>" </dev/null`.
+- nospy: `nospy-ctl.sh apply` runs as a background job — poll `status` until `job=done`, read `joblog`.
 - Input Hook UI: never press "Save changes" if it loaded before a file edit — overwrites keybinds with stale data.
 - Dev apps can't call `listLaunchPoints` / `tvpower` → icons pulled via HA (aiowebostv), screensaver test triggered as root.
 

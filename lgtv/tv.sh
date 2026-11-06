@@ -29,7 +29,7 @@ tv_ssh() { "$OPENSSH/ssh.exe" "${OPTS[@]}" -p 9922 "prisoner@$TV" "$@"; }
 root() {
   local b64 json
   b64=$(printf '%s' "$1" | base64 -w0)
-  json=$(tv_ssh "luna-send-pub -n 1 luna://org.webosbrew.hbchannel.service/exec '{\"command\":\"echo $b64 | base64 -d | sh\"}'")
+  json=$(tv_ssh "luna-send-pub -n 1 luna://org.webosbrew.hbchannel.service/exec '{\"command\":\"sh -c \\\"\$(echo $b64 | base64 -d)\\\" </dev/null\"}'")
   node -e 'const r=JSON.parse(process.argv[1]);
     process.stdout.write(r.stdoutString||"");process.stderr.write(r.stderrString||r.errorText||"");
     process.exit(r.returnValue?0:1)' "$json"
