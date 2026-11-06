@@ -6,13 +6,17 @@ import sys
 import tarfile
 import time
 
+# TV rejects ipks (-5 "ipk verified failed") whose timestamps are ahead of its own clock.
+# A PC clock running fast (notebook was +78 s, never NTP-synced) triggers it. Stamp a day back.
+STAMP = int(time.time()) - 86400
+
 
 def tgz(entries):
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz", format=tarfile.USTAR_FORMAT) as t:
         for name, data in entries:
             info = tarfile.TarInfo(name)
-            info.mtime = int(time.time())
+            info.mtime = STAMP
             if data is None:
                 info.type, info.mode = tarfile.DIRTYPE, 0o777
                 t.addfile(info)
@@ -46,9 +50,8 @@ def pack(app_dir, out_dir):
                "webOS-Packager-Version: x.y.x\n").encode()
     members = [("debian-binary", b"2.0\n"), ("control.tar.gz", tgz([("control", control)])), ("data.tar.gz", tgz(data))]
     out = bytearray(b"!<arch>\n")
-    now = int(time.time())
     for name, body in members:
-        out += f"{name:<16}{now:<12}{0:<6}{0:<6}{'100644':<8}{len(body):<10}`\n".encode()
+        out += f"{name:<16}{STAMP:<12}{0:<6}{0:<6}{'100644':<8}{len(body):<10}`\n".encode()
         out += body + (b"\n" if len(body) & 1 else b"")
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f"{app_id}_{ver}_all.ipk")
