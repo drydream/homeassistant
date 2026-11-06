@@ -55,7 +55,7 @@ curl -s http://192.168.1.115:9991/webos_rsa -o /tmp/k && ssh-keygen -p -P <on-sc
 cp /tmp/k //100.103.51.128/champ/ha-secrets/webos_tv_rsa && rm /tmp/k
 ```
 
-Also update secret `lg_devmode_renew_url` (token in `/var/luna/preferences/devmode_enabled`).
+Also update secret `lg_devmode_renew_url` (token: from the Dev Mode app / LG dev site; `/var/luna/preferences/devmode_enabled` is a directory on this TV now, see Gotchas).
 
 ## Gotchas
 
@@ -64,6 +64,7 @@ Also update secret `lg_devmode_renew_url` (token in `/var/luna/preferences/devmo
 - Installing over the **foreground** app closes it → TV falls back to the last input (HDMI 3 Chromecast). Looks like "the TV jumps to Chromecast by itself"; check `/var/log/messages` for `last_input_handler` next to `NL_APP_INSTALLED`. `tv.sh install` relaunches the app if it was in front.
 - Reinstalling a homebrew app through dev install drops its service elevation → its luna calls return nothing. Fix: `./tv.sh root '/media/developer/apps/usr/palm/services/org.webosbrew.hbchannel.service/elevate-service <service id>'`.
 - Input Hook after a reinstall: `luna-send-pub luna://org.webosbrew.inputhook.service/autostart '{}'` then `/start` (creates `/var/lib/webosbrew/init.d/inputhook`).
+- Wipe protection (read from TV scripts 2026-11-06, not tested by letting it lapse): `/etc/init/devmode.conf` wipes `/media/developer` at boot only when `/var/luna/preferences/devmode_enabled` does not exist (`-e`). Since the 2026-11-06 re-root it is an **empty directory**, not a file: `shutdown.sh`'s boot-counter removal is `rm -f` and cannot delete it. Still wiped by `rm -rf` in `devmode.conf` when the Dev Mode app's `start-devmode.sig` check fails → never uninstall/update LG's Dev Mode app; also factory reset / firmware update (blocked). HA renew keeps the LG server session alive anyway (`CheckDevModeSession.dev?sessionToken=<token from secret lg_devmode_renew_url>` → remaining hours; 986 h on 2026-11-06). The token no longer lives on the TV (that path is the directory now) → only in the HA secret.
 - Dev Mode lapse wipes **every** dev app incl. HB Channel, root does not protect them (2026-10-31). Things outside app dirs survive: `/home/root/.config/lginputhook/keybinds.json`, `/var/lib/webosbrew/*` (startup.sh, nospy state), `/var/luna/preferences/*`.
 - busybox: `timeout -t 45`, not `timeout 45`.
 - Root exec scripts must not reach `sh` on stdin (`... | base64 -d | sh`): `luna-send` reads stdin and silently swallows the rest of the script. `tv.sh root` runs `sh -c "<script>" </dev/null`.
