@@ -772,44 +772,6 @@
             font-weight: 600;
         }
 
-        /* OLED-Safe Idle Screensaver */
-        .screensaver {
-            position: fixed;
-            /* not `inset: 0` - Chromium 68 (webOS 5) ignores it and the overlay shrinks to a box */
-            top: 0; right: 0; bottom: 0; left: 0;
-            background: #000000;
-            z-index: 3000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            cursor: none;
-        }
-
-        .screensaver.active {
-            display: flex;
-        }
-
-        .screensaver-clock-wrap {
-            text-align: center;
-            transition: transform 1.4s ease-in-out;
-        }
-
-        .screensaver-clock {
-            font-size: 132px;
-            font-weight: 200;
-            letter-spacing: -2px;
-            color: rgba(255, 255, 255, 0.82);
-        }
-
-        .screensaver-date {
-            font-size: 22px;
-            font-weight: 400;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.4);
-            margin-top: 6px;
-        }
-
         /* ===== Redesign layer (10-foot UI) =====
            Target is webOS 5 / Chromium 68: no flexbox `gap`, no `aspect-ratio`,
            so spacing below uses margins and fixed sizes only. */
@@ -1117,13 +1079,6 @@
         </div>
     </div>
 
-    <!-- OLED-Safe Idle Screensaver -->
-    <div class="screensaver" id="screensaverOverlay">
-        <div class="screensaver-clock-wrap" id="screensaverClockWrap">
-            <div class="screensaver-clock" id="screensaverClock">20:30</div>
-            <div class="screensaver-date" id="screensaverDate">Mon, Oct 19</div>
-        </div>
-    </div>
 
     <script>
         // appinfo sets handlesRelaunch, so the app must bring itself forward on relaunch.
@@ -1213,9 +1168,6 @@
             const opts = { weekday: 'long', month: 'long', day: 'numeric' };
             const dateStr = now.toLocaleDateString('en-US', opts);
             document.getElementById('dateText').textContent = dateStr;
-
-            document.getElementById('screensaverClock').textContent = timeStr;
-            document.getElementById('screensaverDate').textContent = dateStr;
         }
         setInterval(updateClock, 1000);
         updateClock();
@@ -1891,69 +1843,6 @@
 
         closeDrawerBtn.addEventListener('click', closeDrawer);
 
-        // --- OLED-Safe Idle Screensaver ---
-        const IDLE_TIMEOUT_MS = 3 * 60 * 1000;
-        const PIXEL_SHIFT_MS = 25 * 1000;
-        const screensaverOverlay = document.getElementById('screensaverOverlay');
-        const screensaverClockWrap = document.getElementById('screensaverClockWrap');
-        let screensaverOn = false;
-        let lastActivity = Date.now();
-        let pixelShiftTimer = null;
-
-        function shiftScreensaverClock() {
-            const maxX = Math.min(window.innerWidth * 0.28, 260);
-            const maxY = Math.min(window.innerHeight * 0.28, 160);
-            const x = Math.round((Math.random() - 0.5) * 2 * maxX);
-            const y = Math.round((Math.random() - 0.5) * 2 * maxY);
-            screensaverClockWrap.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
-        }
-
-        // Prefer the TV's own screensaver (Aerial is bind-mounted over it). tvpower denies
-        // dev apps, so it goes through Homebrew Channel's root exec; clock overlay is the fallback.
-        function enterScreensaver() {
-            lastActivity = Date.now(); // keys go to the screensaver app, not here - don't re-fire on return
-            if (!window.webOS || !window.webOS.service) { showClockScreensaver(); return; }
-            webOS.service.request("luna://org.webosbrew.hbchannel.service", {
-                method: "exec",
-                parameters: { command: "luna-send -n 1 luna://com.webos.service.tvpower/power/turnOnScreenSaver '{}'" },
-                onSuccess: function(res) {
-                    if (!/"returnValue":\s*true/.test(res.stdoutString || '')) showClockScreensaver();
-                },
-                onFailure: showClockScreensaver
-            });
-        }
-
-        function showClockScreensaver() {
-            screensaverOn = true;
-            screensaverOverlay.classList.add('active');
-            shiftScreensaverClock();
-            pixelShiftTimer = setInterval(shiftScreensaverClock, PIXEL_SHIFT_MS);
-        }
-
-        function exitScreensaver() {
-            screensaverOn = false;
-            screensaverOverlay.classList.remove('active');
-            clearInterval(pixelShiftTimer);
-        }
-
-        function markActivity() {
-            lastActivity = Date.now();
-            if (screensaverOn) exitScreensaver();
-        }
-        document.addEventListener('mousemove', markActivity);
-        document.addEventListener('mousedown', markActivity);
-
-        // Idle time only counts while we're the app on screen.
-        document.addEventListener('visibilitychange', function() {
-            if (!document.hidden) lastActivity = Date.now();
-        });
-
-        setInterval(function() {
-            if (!document.hidden && !screensaverOn && !modalOpen && !drawerOpen && Date.now() - lastActivity > IDLE_TIMEOUT_MS) {
-                enterScreensaver();
-            }
-        }, 10000);
-
         document.getElementById('closeModalBtn').addEventListener('click', closeSettingsModal);
         document.getElementById('resetDefaultBtn').addEventListener('click', function() {
             tempFavorites = DEFAULT_FAVORITES.slice();
@@ -1985,13 +1874,6 @@
 
         // --- Remote Control Key Handler ---
         document.addEventListener('keydown', function(e) {
-            lastActivity = Date.now();
-            if (screensaverOn) {
-                exitScreensaver();
-                e.preventDefault();
-                return;
-            }
-
             // Back button on LG Magic Remote (461) or Escape
             if (e.keyCode === 461 || e.key === 'Escape' || e.key === 'GoBack') {
                 if (modalOpen) {
