@@ -34,6 +34,12 @@ python -m venv ~/vncv && ~/vncv/Scripts/pip install vncdotool   # once per PC
 
 After a (re)install its service file may still go through `jailer` → `start` returns `Message status unknown` → run `elevate-service org.webosbrew.vncserver.service` (see Gotchas), then `configure '{"password":"…","autostart":true}'`.
 
+## Debugging a dev app (CDP)
+
+Dev Mode exposes Chrome DevTools on `http://192.168.1.115:9998/json` for dev-installed web apps. `Runtime.evaluate` over its `webSocketDebuggerUrl` reads/sets live JS state (e.g. FreeMyTV `screensaverUp`, `lastActivity = Date.now() - 200000` to force the idle path without waiting).
+
+FreeMyTV camera stream vs Aerial: the screensaver covers the app without making the page hidden, so FreeMyTV pauses the MJPEG itself (`screensaverUp`, polls `applicationManager/running` for `com.webos.app.screensaver`, 15 s grace while it shows up). Pausing must swap `src` to a data: URI: on Chromium 68 `removeAttribute('src')` keeps the request (and NAS ffmpeg) alive. Verified 2026-11-06: ffmpeg gone ~8 s after Aerial, back ~2 s after it closes.
+
 ## Carport PiP
 
 `lgtv/apps/carportpip` (`org.drydream.carportpip`): web app with `"defaultWindowType": "overlay"` → transparent window on top of any app, Netflix keeps playing (its media pipeline is untouched). Shows `params.src` (HA `camera_proxy_stream` MJPEG of `camera.carport_direct_minorstream`, ~18 fps, token from the camera's rotating `entity_picture`, so no HA secret in the app) top-right 640x360 for `params.secs` (10 s from the automation), then `window.close()`. Back closes it early. Launched by automation `lg_tv_carport_pip_on_motion` via `webostv.command` `system.launcher/launch` on `binary_sensor.carport_direct_cell_motion_detection` → on (skipped when TV off or on Free My TV, 60 s cooldown).

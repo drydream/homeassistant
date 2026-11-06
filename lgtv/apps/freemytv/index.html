@@ -1646,10 +1646,14 @@
         // ~5% of one NAS core). Signed URL is only checked when the stream opens. Stopped while
         // another app is in front; reconnects 5 s after the stream drops.
         let camGen = 0;
+        // Chromium 68 keeps an MJPEG request open after removeAttribute('src'); swapping in a
+        // data: URI is what actually aborts it (and stops ffmpeg on the NAS).
+        const BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+        function stopCamera() { camImg.onload = camImg.onerror = null; if (camImg.src !== BLANK_IMG) camImg.src = BLANK_IMG; camCard.classList.remove('live'); }
         function refreshCamera() {
             const gen = ++camGen;
             function retry(ms) { setTimeout(function() { if (gen === camGen) refreshCamera(); }, ms); }
-            if (!ha.ready || document.hidden) { camImg.removeAttribute('src'); retry(3000); return; }
+            if (!ha.ready || document.hidden || screensaverUp) { stopCamera(); retry(3000); return; }
             haSend({ type: 'auth/sign_path', path: '/api/camera_proxy_stream/' + HOME_CAMERA.entity, expires: 30 }, function(m) {
                 if (gen !== camGen) return;
                 if (!m.success) { retry(5000); return; }
@@ -1667,18 +1671,34 @@
         // The system screensaver (Aerial, bind-mounted over LG's) never starts on its own while a web
         // app is in front, so start it after 3 min without a key press. tvpower denies dev apps → via
         // Homebrew Channel root exec. No clock fallback of our own: it stacked on top of Aerial.
+        // The screensaver covers us without making the page hidden, so the camera stream is paused
+        // by hand (screensaverUp) and resumed once the screensaver app is gone.
         const IDLE_TIMEOUT_MS = 3 * 60 * 1000;
         let lastActivity = Date.now();
+        let screensaverUp = false, screensaverSince = 0;
         document.addEventListener('keydown', function() { lastActivity = Date.now(); }, true);
         document.addEventListener('visibilitychange', function() { lastActivity = Date.now(); });
-        setInterval(function() {
-            if (document.hidden || Date.now() - lastActivity < IDLE_TIMEOUT_MS || !window.webOS || !webOS.service) return;
-            lastActivity = Date.now();  // don't re-fire every tick while the screensaver is up
+        function rootExec(command, cb) {
             webOS.service.request('luna://org.webosbrew.hbchannel.service', {
-                method: 'exec',
-                parameters: { command: "luna-send -n 1 luna://com.webos.service.tvpower/power/turnOnScreenSaver '{}'" }
+                method: 'exec', parameters: { command: command },
+                onSuccess: function(res) { if (cb) cb(res.stdoutString || ''); }
             });
-        }, 15000);
+        }
+        setInterval(function() {
+            if (!window.webOS || !webOS.service) return;
+            if (screensaverUp) {
+                rootExec("luna-send -n 1 luna://com.webos.applicationManager/running '{}' | grep -c com.webos.app.screensaver; true", function(out) {
+                    if (out.trim() === '0' && Date.now() - screensaverSince > 15000) {  // it takes a few s to show up
+                        screensaverUp = false; lastActivity = Date.now(); refreshCamera(); }
+                });
+                return;
+            }
+            if (document.hidden || Date.now() - lastActivity < IDLE_TIMEOUT_MS) return;
+            lastActivity = Date.now();  // don't re-fire every tick
+            rootExec("luna-send -n 1 luna://com.webos.service.tvpower/power/turnOnScreenSaver '{}'", function(out) {
+                if (/"returnValue":\s*true/.test(out)) { screensaverUp = true; screensaverSince = Date.now(); refreshCamera(); }
+            });
+        }, 5000);
 
         // --- Focus & Spatial Navigation ---
         let mainNavItems = [];
