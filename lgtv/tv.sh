@@ -36,9 +36,13 @@ root() {
 }
 
 install() {
-  local ipk=$1 id=$2 dest=/media/developer/temp/$2.ipk
+  local ipk=$1 id=$2 dest=/media/developer/temp/$2.ipk fg
+  # Installing over the foreground app closes it and the TV falls back to the last input
+  # (HDMI 3 = Chromecast), so relaunch it afterwards.
+  fg=$(root 'luna-send -n 1 luna://com.webos.applicationManager/getForegroundAppInfo "{}"' || true)
   "$OPENSSH/scp.exe" "${OPTS[@]}" -P 9922 "$(cygpath -w "$ipk")" "prisoner@$TV:$dest"
   tv_ssh "luna-send-pub -n 30 -w 60000 luna://com.webos.appInstallService/dev/install '{\"id\":\"$id\",\"ipkUrl\":\"$dest\",\"subscribe\":true}' | grep -m1 -E '\"(installed|failed)\"|errorCode'; rm -f $dest"
+  case $fg in *"\"$id\""*) root "luna-send -n 1 luna://com.webos.applicationManager/launch '{\"id\":\"$id\"}'" >/dev/null ;; esac
 }
 
 case ${1:-} in

@@ -1480,7 +1480,7 @@
             status: 'แสดงสถานะจาก Home Assistant',
             scene: 'กด OK เพื่อส่งคำสั่ง (แอร์สั่งผ่าน IR ไม่มีสถานะย้อนกลับ)'
         };
-        const HOME_CAMERA = { entity: 'camera.carport_native', title: 'โรงจอดรถ' };
+        const HOME_CAMERA = { entity: 'camera.carport_direct_minorstream', title: 'โรงจอดรถ' };
         const HOME_ICONS = {
             fan: 'M12,11A1,1 0 0,0 11,12A1,1 0 0,0 12,13A1,1 0 0,0 13,12A1,1 0 0,0 12,11M12.5,2C17,2 17.11,5.57 14.75,6.75C13.76,7.24 13.32,8.29 13.13,9.22C13.61,9.42 14.03,9.73 14.35,10.13C18.05,8.13 22.03,8.92 22.03,12.5C22.03,17 18.46,17.1 17.28,14.73C16.78,13.74 15.72,13.3 14.79,13.11C14.59,13.59 14.28,14 13.88,14.34C15.87,18.03 15.08,22 11.5,22C7,22 6.91,18.42 9.27,17.24C10.25,16.75 10.69,15.71 10.89,14.79C10.4,14.59 9.97,14.27 9.65,13.87C5.96,15.85 2,15.07 2,11.5C2,7 5.56,6.89 6.74,9.26C7.24,10.25 8.29,10.68 9.22,10.87C9.41,10.39 9.73,9.97 10.14,9.65C8.15,5.96 8.94,2 12.5,2Z',
             plus: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
@@ -1642,25 +1642,27 @@
                      target: { entity_id: entityId } });
         }
 
-        // Snapshot refresh via short-lived signed URL. Paused while another app is in front.
-        // ponytail: ~5s snapshots, not live video; HLS only if this proves too choppy.
+        // Live MJPEG (HA camera_proxy_stream of the substream, same camera as the HA dashboard card,
+        // ~5% of one NAS core). Signed URL is only checked when the stream opens. Stopped while
+        // another app is in front; reconnects 5 s after the stream drops.
         let camGen = 0;
         function refreshCamera() {
             const gen = ++camGen;
-            function next(ms) { setTimeout(function() { if (gen === camGen) refreshCamera(); }, ms); }
-            if (!ha.ready || document.hidden) { next(3000); return; }
-            haSend({ type: 'auth/sign_path', path: '/api/camera_proxy/' + HOME_CAMERA.entity, expires: 30 }, function(m) {
-                if (!m.success) { next(5000); return; }
-                const img = new Image();
-                img.onload = function() { camImg.src = img.src; camCard.classList.add('live'); next(5000); };
-                // carport cam (C320WS) fails ~1 in 3 snapshots: keep the last frame, only complain if none yet.
-                img.onerror = function() {
-                    if (!camCard.classList.contains('live')) camMsg.textContent = 'โหลดภาพกล้องไม่ได้';
-                    next(5000);
+            function retry(ms) { setTimeout(function() { if (gen === camGen) refreshCamera(); }, ms); }
+            if (!ha.ready || document.hidden) { camImg.removeAttribute('src'); retry(3000); return; }
+            haSend({ type: 'auth/sign_path', path: '/api/camera_proxy_stream/' + HOME_CAMERA.entity, expires: 30 }, function(m) {
+                if (gen !== camGen) return;
+                if (!m.success) { retry(5000); return; }
+                camImg.onload = function() { camCard.classList.add('live'); };
+                camImg.onerror = function() {
+                    camCard.classList.remove('live');
+                    camMsg.textContent = 'โหลดภาพกล้องไม่ได้';
+                    retry(5000);
                 };
-                img.src = HA_URL + m.result.path;
+                camImg.src = HA_URL + m.result.path;
             });
         }
+        document.addEventListener('visibilitychange', function() { refreshCamera(); });
 
         // --- Focus & Spatial Navigation ---
         let mainNavItems = [];
