@@ -80,4 +80,4 @@ Also update secret `lg_devmode_renew_url` (token: from the Dev Mode app / LG dev
 4. Aerial screensaver `org.rchalaaa.webos.custom-screensaver` from the HB catalog (its "-5" was the clock, no repack needed), system `general.screenSaverEnabled=on` via root `luna-send .../settingsservice/setSystemSettings`.
 5. FreeMyTV fork `org.webos.freemytv` from `lgtv/apps/freemytv` (+ `config.js` with HA user **TV** token from secrets).
 6. VNCServer + Open Service Menu from HB (one HB install at a time, parallel = `duplicate command`), then the VNC steps above.
-7. Shelf (max 9 tiles, 10 overflows 1920px): YT, Netflix, Moonfin, Moonlight, Twitch | Chromecast | Browser, Homebrew, VNC. Service Menu sits in Customize only.
+7. Shelf (8 tiles; 9 still fits 1920px, 10 overflows): YT, Netflix, Moonfin, Moonlight, Twitch | Chromecast | Browser, Homebrew. VNC + Service Menu in Customize only.
