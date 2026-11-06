@@ -3,7 +3,7 @@
 #   tv.sh sh '<cmd>'            run as prisoner (dev mode user)
 #   tv.sh root '<cmd>'          run as root via Homebrew Channel exec
 #   tv.sh install <ipk> <id>    sideload ipk through appInstallService
-#   tv.sh pack <app_dir>        build ipk with ares-package into ./out
+#   tv.sh pack <app_dir>        build ipk with pack.py into ./out (config.js pulled from NAS if missing)
 set -euo pipefail
 
 TV=${TV_HOST:-192.168.1.115}
@@ -45,6 +45,7 @@ case ${1:-} in
   sh)      sync_key; tv_ssh "$2" ;;
   root)    sync_key; root "$2" ;;
   install) sync_key; install "$2" "$3" ;;
-  pack)    npx -y -p @webos-tools/cli@3 ares-package "$2" -o "$HERE/out" ;;
+  pack)    [ -f "$2/config.js" ] || cp "//100.103.51.128/champ/ha-secrets/$(basename "$2")-config.js" "$2/config.js" 2>/dev/null || true
+           python -I "$HERE/pack.py" "$2" "$HERE/out" ;;
   *)       sed -n '2,7p' "$0"; exit 1 ;;
 esac
