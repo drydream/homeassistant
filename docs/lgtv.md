@@ -34,6 +34,12 @@ python -m venv ~/vncv && ~/vncv/Scripts/pip install vncdotool   # once per PC
 
 After a (re)install its service file may still go through `jailer` → `start` returns `Message status unknown` → run `elevate-service org.webosbrew.vncserver.service` (see Gotchas), then `configure '{"password":"…","autostart":true}'`.
 
+## Carport PiP
+
+`lgtv/apps/carportpip` (`org.drydream.carportpip`): web app with `"defaultWindowType": "overlay"` → transparent window on top of any app, Netflix keeps playing (its media pipeline is untouched). Shows `params.src` (HA `camera_proxy_stream` MJPEG of `camera.carport_direct_minorstream`, ~18 fps, token from the camera's rotating `entity_picture`, so no HA secret in the app) top-right 640x360 for `params.secs` (10 s from the automation), then `window.close()`. Back closes it early. Launched by automation `lg_tv_carport_pip_on_motion` via `webostv.command` `system.launcher/launch` on `binary_sensor.carport_direct_cell_motion_detection` → on (skipped when TV off or on Free My TV, 60 s cooldown).
+
+Checking it: VNC captures only black while Netflix (DRM) plays, and an app launched over SSAP does not show in `applicationManager/running`. Use `grep carportpip /var/log/messages` → `LSM NL_VSC visible:true/false` lines.
+
 ## Key rotation
 
 Key + passphrase change when the Dev Mode app is reinstalled / re-logged. Open Dev Mode app on the TV (Key Server `:9991` only listens while it is open), then:

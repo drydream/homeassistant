@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 100vw; height: 100vh; background: transparent; overflow: hidden; }
+  #pip { position: absolute; top: 48px; right: 48px; width: 640px; height: 360px; background: #000;
+         border-radius: 16px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
+  #pip img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #label { position: absolute; top: 12px; left: 14px; padding: 4px 12px; border-radius: 999px;
+           background: rgba(0,0,0,.6); color: #fff; font: 600 22px sans-serif; }
+</style>
+</head>
+<body>
+<div id="pip"><img id="cam" alt=""><div id="label">● โรงจอดรถ</div></div>
+<script>
+  // HA launches us with {"src": "<camera_proxy_stream URL with its rotating access token>", "secs": 5}.
+  var timer;
+  function params() {
+    var raw = (window.webOSSystem || window.PalmSystem || {}).launchParams || '{}';
+    try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return {}; }
+  }
+  function show() {
+    var p = params();
+    if (!p.src) { window.close(); return; }
+    document.getElementById('cam').src = p.src;
+    clearTimeout(timer);
+    timer = setTimeout(function() { document.getElementById('cam').src = ''; window.close(); }, (p.secs || 5) * 1000);
+  }
+  document.addEventListener('webOSRelaunch', show);  // new event while still showing: restart the 5 s
+  document.addEventListener('keydown', function(e) { if (e.keyCode === 461) window.close(); });  // Back
+  show();
+</script>
+</body>
+</html>

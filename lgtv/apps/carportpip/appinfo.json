@@ -1,0 +1,16 @@
+{
+  "id": "org.drydream.carportpip",
+  "version": "1.0.0",
+  "vendor": "drydream",
+  "type": "web",
+  "main": "index.html",
+  "title": "Carport PiP",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "iconColor": "#000000",
+  "resolution": "1920x1080",
+  "defaultWindowType": "overlay",
+  "noSplashOnLaunch": true,
+  "spinnerOnLaunch": false,
+  "handlesRelaunch": true
+}

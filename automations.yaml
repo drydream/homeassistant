@@ -472,3 +472,40 @@
             if trigger.event.data.cmd == ''on'' else ''{"ir_code_to_send": "A9YBlwHgDQMLiWICDsEG1gEVBdYB4AMj4AcPQBvAE0AHQAPAE0AL4AMDQBdAA0ATQAfgAwNAAeADD8ALwCsHFQWXAZcB1gFAA0ABARUFgANAAUATQAMC1gGXIAEA1mABQAfAA4ABAJcgAUAFgANAAUALwEdAB8APwAdAEwFoiuFhB8ABQH/AA8ABQA9Aj0AH4AMD4AcTwAHgAyPAC0ABwAvgCwdAAcBP4AcH4WMH4Aub4C8TQMdAA+AHP8ATQAdAA+AHH0AB4AsTQCvgCwNAK0AXQAfgJwNAAeADM0BHQAPAE8AB4AMPwAtABwIVBZcgAwTWAZcB1iABQAXAA0ABwAvAB0ABwAvAB0ABgAsEFQWXAdYgAYAHQAtAAwHWAUAPQAMB1gHgDQPgCxvgCxPgAz/AHwsVBZcB1gGXARUFlwE="}''
             }}'
       - delay: 3
+- id: lg_tv_carport_pip_on_motion
+  alias: กล้องโรงจอดรถมีความเคลื่อนไหว → PiP บนทีวี 10 วิ
+  description: เปิดแอป overlay org.drydream.carportpip (lgtv/apps/carportpip) มุมขวาบน
+    ไม่หยุดแอปที่ดูอยู่ (Netflix ฯลฯ). ภาพสด MJPEG จาก substream, token ชั่วคราวจาก
+    entity_picture. ข้ามถ้าทีวีปิดหรืออยู่หน้า Free My TV (มีภาพกล้องอยู่แล้ว). เว้น 60
+    วิ ต่อครั้ง
+  mode: single
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.carport_direct_cell_motion_detection
+    to: 'on'
+  conditions:
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: media_player.lg_webos_tv_65un7200ptf
+      state:
+      - 'off'
+      - unavailable
+      - unknown
+    - condition: state
+      entity_id: media_player.lg_webos_tv_65un7200ptf
+      attribute: source
+      state: Free My TV
+  actions:
+  - action: webostv.command
+    target:
+      entity_id: media_player.lg_webos_tv_65un7200ptf
+    data:
+      command: system.launcher/launch
+      payload:
+        id: org.drydream.carportpip
+        params:
+          src: "http://192.168.1.170:8123{{ state_attr('camera.carport_direct_minorstream',
+            'entity_picture') | replace('/camera_proxy/', '/camera_proxy_stream/') }}"
+          secs: 10
+  - delay: 00:01:00
