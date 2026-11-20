@@ -37,6 +37,17 @@
         ".hero-desc{color:rgba(244,234,214,.85);text-shadow:0 1px 8px rgba(0,0,0,.8);}" +
         ".shelf-top-bar .shelf-header{visibility:hidden;}";
     document.head.appendChild(st);
+
+    // theme music, soft, looping, only while the launcher is in front (castle/theme.mp3, gitignored)
+    var music = new Audio('castle/theme.mp3');
+    music.loop = true; music.volume = 0.35; window.castleMusic = music;   // CDP: castleMusic.paused / .volume
+    function playIfFront() {
+        if (document.hidden) music.pause();
+        else { var p = music.play(); if (p && p.catch) p.catch(function () {}); }   // autoplay refused: the keydown below retries
+    }
+    document.addEventListener('visibilitychange', playIfFront);
+    document.addEventListener('keydown', function () { if (music.paused && !document.hidden) playIfFront(); }, true);
+    playIfFront();
     document.body.style.background = '#000';
     var glow = document.getElementById('ambientGlow');
     if (glow) glow.style.display = 'none';                 // the per-app colour glow fights the photo
