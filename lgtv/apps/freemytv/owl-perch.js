@@ -94,6 +94,7 @@
             owl.y = owl.sy + (ty(owl.to) - owl.sy) * u - Math.max(0, far - 1) * 46 * Math.sin(Math.PI * u);
             if (!owl.landed && ht >= HOP.down) {
                 owl.landed = true; owl.at = owl.to;
+                if (app === owl.at) strikeAt(owl.at);           // not when it's about to spring on to the next tile
                 for (var k = 0; k < 10; k++) dsp.push({ x: owl.x + (Math.random() - .5) * 70, y: owl.y + (Math.random() - .5) * 10, vx: (Math.random() - .5) * 90,
                     vy: -10 - Math.random() * 40, life: 0.5 + Math.random() * 0.5, r: 0.7 + Math.random() * 1.4 });
             }
@@ -119,6 +120,72 @@
             });
             dctx.globalAlpha = 1;
         }
+        if (strike) drawStrike(dt);
+    }
+
+    // lightning when the owl lands: a jagged bolt from the sky onto the icon, a flash, the gilded frame lights up, thunder.
+    // The full-screen canvas stays hidden between strikes, so it costs nothing while idle.
+    var bolt = document.createElement('canvas');
+    bolt.width = 1920; bolt.height = 1080;
+    bolt.style.cssText = 'position:fixed;left:0;top:0;width:1920px;height:1080px;pointer-events:none;z-index:9000;visibility:hidden;';
+    document.body.appendChild(bolt);
+    var bctx = bolt.getContext('2d'), strike = null;
+    var thunder = new Audio('castle/thunder.mp3');
+    thunder.volume = 0.5;
+    var bst = document.createElement('style');
+    bst.textContent = '.shelf-wrapper .app-tile .app-icon.struck,.shelf-wrapper .app-tile.focused .app-icon.struck{box-shadow:inset 0 0 0 3px #fff,0 0 0 3px #e8f0ff,0 0 0 7px #fff4c8,0 0 0 9px #8fb0ff,0 0 60px 16px rgba(170,200,255,.8);}';
+    document.head.appendChild(bst);
+
+    function jag(x0, y0, x1, y1, d) {                     // midpoint displacement: halve each segment, nudge the middle sideways
+        var pts = [[x0, y0], [x1, y1]];
+        while (d > 4) {
+            var n = [pts[0]];
+            for (var i = 1; i < pts.length; i++) {
+                var a = pts[i - 1], b = pts[i];
+                n.push([(a[0] + b[0]) / 2 + (Math.random() - .5) * d, (a[1] + b[1]) / 2 + (Math.random() - .5) * d * 0.3]);
+                n.push(b);
+            }
+            pts = n; d /= 2;
+        }
+        return pts;
+    }
+    function strikeAt(tile) {
+        var icon = tile.querySelector('.app-icon');
+        if (!icon) return;
+        var r = icon.getBoundingClientRect(), x1 = r.left + r.width / 2, y1 = r.top + 6;
+        var main = jag(x1 + (Math.random() - .5) * 500, -20, x1, y1, 160), branches = [];
+        for (var k = 0; k < 3; k++) {
+            var p = main[2 + ((Math.random() * main.length * 0.6) | 0)];
+            branches.push(jag(p[0], p[1], p[0] + (Math.random() - .5) * 280, p[1] + 80 + Math.random() * 180, 60));
+        }
+        if (strike) strike.icon.classList.remove('struck');
+        strike = { t: 0, main: main, branches: branches, icon: icon };
+        icon.classList.add('struck');
+        try { thunder.currentTime = 0; var pr = thunder.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {}
+    }
+    function line(pts, w, col) {
+        bctx.lineWidth = w; bctx.strokeStyle = col; bctx.beginPath(); bctx.moveTo(pts[0][0], pts[0][1]);
+        for (var i = 1; i < pts.length; i++) bctx.lineTo(pts[i][0], pts[i][1]);
+        bctx.stroke();
+    }
+    function drawStrike(dt) {
+        var t = (strike.t += dt);
+        // on, a blink off, on again, then fade: how a real strike flickers
+        var a = t < .07 ? 1 : t < .11 ? 0 : t < .2 ? 0.9 : Math.max(0, 0.9 * (1 - (t - .2) / .25));
+        var flash = t < .05 ? .3 : t < .11 ? 0 : t < .16 ? .15 : 0;
+        bctx.clearRect(0, 0, 1920, 1080);
+        if (flash) { bctx.globalAlpha = flash; bctx.fillStyle = '#dfe8ff'; bctx.fillRect(0, 0, 1920, 1080); }
+        if (a > 0) {
+            bctx.lineJoin = 'round'; bctx.lineCap = 'round';
+            [[0.25, 14, 7, '#9fb8ff'], [0.6, 5, 2.5, '#cfe0ff'], [1, 2, 1, '#ffffff']].forEach(function (L) {
+                bctx.globalAlpha = a * L[0];
+                line(strike.main, L[1], L[3]);
+                strike.branches.forEach(function (b) { line(b, L[2], L[3]); });
+            });
+        }
+        bctx.globalAlpha = 1;
+        if (t > .45) { strike.icon.classList.remove('struck'); strike = null; bctx.clearRect(0, 0, 1920, 1080); bolt.style.visibility = 'hidden'; }
+        else bolt.style.visibility = 'visible';
     }
 
     // fps over the last second, read over CDP: window.owlFps
