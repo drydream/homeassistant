@@ -130,8 +130,21 @@
     bolt.style.cssText = 'position:fixed;left:0;top:0;width:1920px;height:1080px;pointer-events:none;z-index:9000;visibility:hidden;';
     document.body.appendChild(bolt);
     var bctx = bolt.getContext('2d'), strike = null;
-    var thunder = new Audio('castle/thunder.mp3');
-    thunder.volume = 0.25;
+    // thunder through Web Audio: a second <audio> element takes webOS media focus and pauses the theme music
+    var AC = window.AudioContext || window.webkitAudioContext, actx = AC && new AC(), thunderBuf = null;
+    if (actx) {
+        var xhr = new XMLHttpRequest();                    // XHR, not fetch: the page is a file:// URL
+        xhr.open('GET', 'castle/thunder.mp3'); xhr.responseType = 'arraybuffer';
+        xhr.onload = function () { actx.decodeAudioData(xhr.response, function (b) { thunderBuf = b; }, function () {}); };
+        xhr.send();
+    }
+    function playThunder() {
+        if (!thunderBuf) return;
+        if (actx.state === 'suspended') actx.resume();
+        var src = actx.createBufferSource(), g = actx.createGain();
+        g.gain.value = 0.25;
+        src.buffer = thunderBuf; src.connect(g); g.connect(actx.destination); src.start();
+    }
     var bst = document.createElement('style');
     bst.textContent = '.shelf-wrapper .app-tile .app-icon.struck,.shelf-wrapper .app-tile.focused .app-icon.struck{box-shadow:inset 0 0 0 3px #fff,0 0 0 3px #e8f0ff,0 0 0 7px #fff4c8,0 0 0 9px #8fb0ff,0 0 60px 16px rgba(170,200,255,.8);}';
     document.head.appendChild(bst);
@@ -161,7 +174,7 @@
         if (strike) strike.icon.classList.remove('struck');
         strike = { t: 0, main: main, branches: branches, icon: icon };
         icon.classList.add('struck');
-        try { thunder.currentTime = 0; var pr = thunder.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {}
+        playThunder();
     }
     function line(pts, w, col) {
         bctx.lineWidth = w; bctx.strokeStyle = col; bctx.beginPath(); bctx.moveTo(pts[0][0], pts[0][1]);

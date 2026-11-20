@@ -51,7 +51,7 @@
         else { var p = music.play(); if (p && p.catch) p.catch(function () {}); }   // autoplay refused: the keydown below retries
     }
     document.addEventListener('visibilitychange', playIfFront);
-    // webOS sometimes pauses it on its own (seen once right after a reload, page still in front): pick it back up
+    // webOS pauses it when another <audio> takes media focus (seen once right after a reload): pick it back up
     music.addEventListener('pause', function () { if (!document.hidden) setTimeout(playIfFront, 1500); });
     document.addEventListener('keydown', function () { if (music.paused && !document.hidden) playIfFront(); }, true);
     playIfFront();
