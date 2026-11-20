@@ -126,7 +126,7 @@
     function frame(now) {
         var dt = last ? Math.min(0.1, (now - last) / 1000) : 0; last = now;
         frames++; if (now - fpsT >= 1000) { window.owlFps = frames * 1000 / (now - fpsT); frames = 0; fpsT = now; }
-        if (typeof screensaverUp === 'undefined' || !screensaverUp) update(dt, now / 1000);   // Aerial covers us: don't burn the GPU under it
+        update(dt, now / 1000);
         requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);

@@ -36,9 +36,9 @@ After a (re)install its service file may still go through `jailer` → `start` r
 
 ## Debugging a dev app (CDP)
 
-Dev Mode exposes Chrome DevTools on `http://192.168.1.115:9998/json` for dev-installed web apps. `Runtime.evaluate` over its `webSocketDebuggerUrl` reads/sets live JS state (e.g. FreeMyTV `screensaverUp`, `lastActivity = Date.now() - 200000` to force the idle path without waiting).
+Dev Mode exposes Chrome DevTools on `http://192.168.1.115:9998/json` for dev-installed web apps. `Runtime.evaluate` over its `webSocketDebuggerUrl` reads/sets live JS state (e.g. FreeMyTV `window.owlFps`).
 
-FreeMyTV camera stream vs Aerial: the screensaver covers the app without making the page hidden, so FreeMyTV pauses the MJPEG itself (`screensaverUp`, polls `applicationManager/running` for `com.webos.app.screensaver`, 15 s grace while it shows up). Pausing must swap `src` to a data: URI: on Chromium 68 `removeAttribute('src')` keeps the request (and NAS ffmpeg) alive. Verified 2026-11-06: ffmpeg gone ~8 s after Aerial, back ~2 s after it closes.
+Screensaver: removed 2026-11-20 (user doesn't want one). Aerial mod (`org.rchalaaa.webos.custom-screensaver`, a bind-mount of its QML over `com.webos.app.screensaver/qml/main.qml` from init.d `50-custom-screensaver-aerial`) unapplied + deleted, system `general.screenSaverEnabled=off`, FreeMyTV's 3-min idle trigger and camera pause gone.
 
 ## Carport PiP
 
@@ -48,7 +48,7 @@ Checking it: VNC captures only black while Netflix (DRM) plays, and an app launc
 
 ## Castle theme (owl + castle backdrop)
 
-FreeMyTV wears the castle scene and owl from [ikevinadams/hogwarts-tv-home](https://github.com/ikevinadams/hogwarts-tv-home) (Android TV APK; only its web page was ported). `owl-perch.js` = owl perched on the focused `.app-tile`, hops to the next (sprites + `OWL_SHEETS` from the repo's TV-packed `hogwarts-tv/app/src/main/assets/www/owl/`). `castle.js` = backdrop, TV-mode subset (`www/img/`: castle.jpg, mist.png, windows_a_crop.png, layers.js, points.js): candle windows, moon glow, mist, stars, lake glints, shooting star. Both pause while `screensaverUp`. `castle.js` also restyles the clock + hero title in the Harry P font (dafont `harry_p`, free personal use → `castle/harryp.ttf`, gitignored: `curl -sL -o hp.zip 'https://dl.dafont.com/dl/?f=harry_p'`, unzip `HARRYP__.TTF`), lifts the hero text clear of the owl and hides the "Favorite Apps" label (always under the owl).
+FreeMyTV wears the castle scene and owl from [ikevinadams/hogwarts-tv-home](https://github.com/ikevinadams/hogwarts-tv-home) (Android TV APK; only its web page was ported). `owl-perch.js` = owl perched on the focused `.app-tile`, hops to the next (sprites + `OWL_SHEETS` from the repo's TV-packed `hogwarts-tv/app/src/main/assets/www/owl/`). `castle.js` = backdrop, TV-mode subset (`www/img/`: castle.jpg, mist.png, windows_a_crop.png, layers.js, points.js): candle windows, moon glow, mist, stars, lake glints, shooting star. `castle.js` also restyles the clock + hero title in the Harry P font (dafont `harry_p`, free personal use → `castle/harryp.ttf`, gitignored: `curl -sL -o hp.zip 'https://dl.dafont.com/dl/?f=harry_p'`, unzip `HARRYP__.TTF`), lifts the hero text clear of the owl and hides the "Favorite Apps" label (always under the owl).
 
 Assets are fan art (personal use) → **gitignored** (`lgtv/.gitignore`), not in this public repo. Fresh checkout / other PC, before `tv.sh pack`:
 
@@ -86,14 +86,14 @@ Also update secret `lg_devmode_renew_url` (token: from the Dev Mode app / LG dev
 - Root exec scripts must not reach `sh` on stdin (`... | base64 -d | sh`): `luna-send` reads stdin and silently swallows the rest of the script. `tv.sh root` runs `sh -c "<script>" </dev/null`.
 - nospy: `nospy-ctl.sh apply` runs as a background job — poll `status` until `job=done`, read `joblog`.
 - Input Hook UI: never press "Save changes" if it loaded before a file edit — overwrites keybinds with stale data.
-- Dev apps can't call `listLaunchPoints` / `tvpower` → icons pulled via HA (aiowebostv); FreeMyTV starts the screensaver through HB root exec after 3 min idle (the system one never starts by itself while a web app is in front).
+- Dev apps can't call `listLaunchPoints` / `tvpower` → icons pulled via HA (aiowebostv).
 
 ## Reinstall checklist (after a Dev Mode wipe)
 
 1. Re-root, HB Channel → check `./tv.sh sh "luna-send-pub -n 1 luna://org.webosbrew.hbchannel.service/getConfiguration '{}'"` → `root:true`, `blockUpdates:true`.
 2. From HB Channel UI: LG Input Hook, Life's Good Without Spying, Moonfin (Jellyfin NAS :8096), Moonlight, YouTube AdFree (official YouTube must be removed as root first, same app id), Twitch AdFree.
 3. nospy: `init/nospy-ctl.sh set/enable` as root with `domains.updates=on` (its hosts bind-mount replaces HB's update block), thinq/lan.block off (HA needs them).
-4. Aerial screensaver `org.rchalaaa.webos.custom-screensaver` from the HB catalog (its "-5" was the clock, no repack needed), system `general.screenSaverEnabled=on` via root `luna-send .../settingsservice/setSystemSettings`.
+4. (no screensaver: Aerial removed 2026-11-20; keep `general.screenSaverEnabled=off`)
 5. FreeMyTV fork `org.webos.freemytv` from `lgtv/apps/freemytv` (+ `config.js` with HA user **TV** token from secrets).
 6. VNCServer + Open Service Menu from HB (one HB install at a time, parallel = `duplicate command`), then the VNC steps above.
 7. Shelf (8 tiles; 9 still fits 1920px, 10 overflows): YT, Netflix, Moonfin, Moonlight, Twitch | Chromecast | Browser, Homebrew. VNC + Service Menu in Customize only.

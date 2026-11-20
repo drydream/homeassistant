@@ -104,7 +104,7 @@
     var last = 0, skyAcc = 0, odd = false;
     function frame(now) {
         var t = now / 1000, dt = last ? Math.min(0.1, t - last) : 0; last = t;
-        if (typeof screensaverUp === 'undefined' || !screensaverUp) {   // Aerial covers us: don't burn the GPU under it
+        {
             mist.style.transform = 'translateX(' + (-(t * 11.38) % 1707).toFixed(1) + 'px)';
             win.style.opacity = (0.22 + 0.42 * flick(t, 0)).toFixed(3);
             moon.style.opacity = (0.75 + 0.2 * Math.sin(t / 6.5)).toFixed(3);
