@@ -35,7 +35,12 @@
         ".hero-tag{color:#d9b45f;}" +
         ".hero-title{font-family:'HarryP',serif;font-size:112px;font-weight:400;letter-spacing:1px;line-height:1;color:#f3dc9a;text-shadow:0 3px 20px rgba(0,0,0,.75);}" +
         ".hero-desc{color:rgba(244,234,214,.85);text-shadow:0 1px 8px rgba(0,0,0,.8);}" +
-        ".shelf-top-bar .shelf-header{visibility:hidden;}";
+        ".shelf-top-bar .shelf-header{visibility:hidden;}" +
+        // gilded frame on each app icon: dark bevel, gold band with a bright edge, bronze rim; candle glow when focused
+        ".shelf-wrapper .app-icon{box-shadow:inset 0 0 0 2px rgba(243,220,154,.45),0 0 0 2px #1c1208,0 0 0 5px #b8893a,0 0 0 6px #f0d590,0 0 0 8px #3d2a10,0 12px 26px rgba(0,0,0,.6);}" +
+        ".shelf-wrapper .app-tile.focused .app-icon{box-shadow:inset 0 0 0 2px rgba(255,236,180,.8),0 0 0 2px #1c1208,0 0 0 5px #e2b85a,0 0 0 6px #fff1c4,0 0 0 8px #5a3e17,0 0 34px 6px rgba(255,190,100,.55),0 22px 44px rgba(0,0,0,.7);}" +
+        ".shelf-wrapper .app-label{color:rgba(233,220,192,.7);}" +
+        ".shelf-wrapper .app-tile.focused .app-label{color:#f3dc9a;}";
     document.head.appendChild(st);
 
     // theme music, soft, looping, only while the launcher is in front (castle/theme.mp3, gitignored)

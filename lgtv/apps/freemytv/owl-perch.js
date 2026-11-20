@@ -48,7 +48,7 @@
         return tile;                                       // focus on another row: stay on the last app
     }
     var tx = function (t) { return t.offsetLeft + t.offsetWidth / 2; };
-    var ty = function (t) { return t.offsetTop - 10; };    // icon top after the 1.1 focus scale + 4 px lift
+    var ty = function (t) { return t.offsetTop - 18; };    // icon top after the 1.1 focus scale + 4 px lift, above the 8 px gilded rim
 
     var owl = { at: null, to: null, face: 1, hopping: false, hopT: 0, idleT: 0, idleWait: 1, sx: 0, sy: 0, x: 0, y: 0, landed: true };
     function hop(to, from) {
