@@ -46,6 +46,21 @@ FreeMyTV camera stream vs Aerial: the screensaver covers the app without making 
 
 Checking it: VNC captures only black while Netflix (DRM) plays, and an app launched over SSAP does not show in `applicationManager/running`. Use `grep carportpip /var/log/messages` → `LSM NL_VSC visible:true/false` lines.
 
+## Castle theme (owl + castle backdrop)
+
+FreeMyTV wears the castle scene and owl from [ikevinadams/hogwarts-tv-home](https://github.com/ikevinadams/hogwarts-tv-home) (Android TV APK; only its web page was ported). `owl-perch.js` = owl perched on the focused `.app-tile`, hops to the next (sprites + `OWL_SHEETS` from the repo's TV-packed `hogwarts-tv/app/src/main/assets/www/owl/`). `castle.js` = backdrop, TV-mode subset (`www/img/`: castle.jpg, mist.png, windows_a_crop.png, layers.js, points.js): candle windows, moon glow, mist, stars, lake glints, shooting star. Both pause while `screensaverUp`.
+
+Assets are fan art (personal use) → **gitignored** (`lgtv/.gitignore`), not in this public repo. Fresh checkout / other PC, before `tv.sh pack`:
+
+```bash
+cd /z/homeassistant/lgtv/apps/freemytv; R=ikevinadams/hogwarts-tv-home W=hogwarts-tv/app/src/main/assets/www
+mkdir -p owl castle
+for n in hop.webp idle.webp owl.js; do curl -sL -o owl/$n https://raw.githubusercontent.com/$R/main/$W/owl/$n; done
+for n in castle.jpg mist.png windows_a_crop.png layers.js points.js; do curl -sL -o castle/$n https://raw.githubusercontent.com/$R/main/$W/img/$n; done
+```
+
+Perf (CDP `window.owlFps`, 2026-11-20): plain FreeMyTV ~60, + owl ~58 (hop 44-55), + full castle ~33 → dropped the original's slow camera drift (~10 fps) and the separate full-screen shade layer (~5 fps, shade now painted into the photo's own background) → ~51. Skipped: library + greenhouse scenes (films only open a search in TH).
+
 ## Key rotation
 
 Key + passphrase change when the Dev Mode app is reinstalled / re-logged. Open Dev Mode app on the TV (Key Server `:9991` only listens while it is open), then:
@@ -66,6 +81,7 @@ Also update secret `lg_devmode_renew_url` (token: from the Dev Mode app / LG dev
 - Input Hook after a reinstall: `luna-send-pub luna://org.webosbrew.inputhook.service/autostart '{}'` then `/start` (creates `/var/lib/webosbrew/init.d/inputhook`).
 - Wipe protection (read from TV scripts 2026-11-06, not tested by letting it lapse): `/etc/init/devmode.conf` wipes `/media/developer` at boot only when `/var/luna/preferences/devmode_enabled` does not exist (`-e`). Since the 2026-11-06 re-root it is an **empty directory**, not a file: `shutdown.sh`'s boot-counter removal is `rm -f` and cannot delete it. Still wiped by `rm -rf` in `devmode.conf` when the Dev Mode app's `start-devmode.sig` check fails → never uninstall/update LG's Dev Mode app; also factory reset / firmware update (blocked). HA renew keeps the LG server session alive anyway (`CheckDevModeSession.dev?sessionToken=<token from secret lg_devmode_renew_url>` → remaining hours; 986 h on 2026-11-06). The token no longer lives on the TV (that path is the directory now) → only in the HA secret.
 - Dev Mode lapse wipes **every** dev app incl. HB Channel, root does not protect them (2026-10-31). Things outside app dirs survive: `/home/root/.config/lginputhook/keybinds.json`, `/var/lib/webosbrew/*` (startup.sh, nospy state), `/var/luna/preferences/*`.
+- 2026-11-20: after a 19:06 boot `/var/luna/preferences/devmode_enabled` was **gone** (dev apps still there) and `appInstallService/dev/install` answered `Unknown method "install" for category "/dev"` (devmode not started this boot). Recreated it with `mkdir`; cause not found yet — check it after the next reboot. Meanwhile updated an installed app by copying files straight into `/media/developer/apps/usr/palm/applications/<id>/` as root (scp to `/media/developer/temp`, then `tar -x`), then `location.reload()` over CDP.
 - busybox: `timeout -t 45`, not `timeout 45`.
 - Root exec scripts must not reach `sh` on stdin (`... | base64 -d | sh`): `luna-send` reads stdin and silently swallows the rest of the script. `tv.sh root` runs `sh -c "<script>" </dev/null`.
 - nospy: `nospy-ctl.sh apply` runs as a background job — poll `status` until `job=done`, read `joblog`.
