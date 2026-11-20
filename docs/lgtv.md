@@ -48,7 +48,7 @@ Checking it: VNC captures only black while Netflix (DRM) plays, and an app launc
 
 ## Castle theme (owl + castle backdrop)
 
-FreeMyTV wears the castle scene and owl from [ikevinadams/hogwarts-tv-home](https://github.com/ikevinadams/hogwarts-tv-home) (Android TV APK; only its web page was ported). `owl-perch.js` = owl perched on the focused `.app-tile`, hops to the next (sprites + `OWL_SHEETS` from the repo's TV-packed `hogwarts-tv/app/src/main/assets/www/owl/`). `castle.js` = backdrop, TV-mode subset (`www/img/`: castle.jpg, mist.png, windows_a_crop.png, layers.js, points.js): candle windows, moon glow, mist, stars, lake glints, shooting star. Both pause while `screensaverUp`.
+FreeMyTV wears the castle scene and owl from [ikevinadams/hogwarts-tv-home](https://github.com/ikevinadams/hogwarts-tv-home) (Android TV APK; only its web page was ported). `owl-perch.js` = owl perched on the focused `.app-tile`, hops to the next (sprites + `OWL_SHEETS` from the repo's TV-packed `hogwarts-tv/app/src/main/assets/www/owl/`). `castle.js` = backdrop, TV-mode subset (`www/img/`: castle.jpg, mist.png, windows_a_crop.png, layers.js, points.js): candle windows, moon glow, mist, stars, lake glints, shooting star. Both pause while `screensaverUp`. `castle.js` also restyles the clock + hero title in the Harry P font (dafont `harry_p`, free personal use → `castle/harryp.ttf`, gitignored: `curl -sL -o hp.zip 'https://dl.dafont.com/dl/?f=harry_p'`, unzip `HARRYP__.TTF`), lifts the hero text clear of the owl and hides the "Favorite Apps" label (always under the owl).
 
 Assets are fan art (personal use) → **gitignored** (`lgtv/.gitignore`), not in this public repo. Fresh checkout / other PC, before `tv.sh pack`:
 

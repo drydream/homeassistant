@@ -25,6 +25,18 @@
         '<div id="cbMist" style="position:absolute;left:0;top:0;width:5121px;height:100%;background:url(castle/mist.png) 0 0 / 1707px 100% repeat-x;will-change:transform;"></div></div>' +
         '</div>';
     document.body.insertBefore(root, document.body.firstChild);
+    // type: Harry P (dafont, free, personal use; castle/harryp.ttf, gitignored) for the clock and the app name.
+    // The owl stands ~110 px above the tiles, so the hero text sits higher and the "Favorite Apps" label (always under the owl) goes.
+    var st = document.createElement('style');
+    st.textContent =
+        "@font-face{font-family:'HarryP';src:url(castle/harryp.ttf) format('truetype');}" +
+        ".clock{font-family:'HarryP',serif;font-size:118px;font-weight:400;letter-spacing:2px;color:#f4ead6;text-shadow:0 2px 18px rgba(0,0,0,.6);}" +
+        ".hero-shelf{padding-bottom:150px;}" +
+        ".hero-tag{color:#d9b45f;}" +
+        ".hero-title{font-family:'HarryP',serif;font-size:112px;font-weight:400;letter-spacing:1px;line-height:1;color:#f3dc9a;text-shadow:0 3px 20px rgba(0,0,0,.75);}" +
+        ".hero-desc{color:rgba(244,234,214,.85);text-shadow:0 1px 8px rgba(0,0,0,.8);}" +
+        ".shelf-top-bar .shelf-header{visibility:hidden;}";
+    document.head.appendChild(st);
     document.body.style.background = '#000';
     var glow = document.getElementById('ambientGlow');
     if (glow) glow.style.display = 'none';                 // the per-app colour glow fights the photo
