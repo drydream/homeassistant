@@ -131,7 +131,7 @@
     document.body.appendChild(bolt);
     var bctx = bolt.getContext('2d'), strike = null;
     var thunder = new Audio('castle/thunder.mp3');
-    thunder.volume = 0.5;
+    thunder.volume = 0.25;
     var bst = document.createElement('style');
     bst.textContent = '.shelf-wrapper .app-tile .app-icon.struck,.shelf-wrapper .app-tile.focused .app-icon.struck{box-shadow:inset 0 0 0 3px #fff,0 0 0 3px #e8f0ff,0 0 0 7px #fff4c8,0 0 0 9px #8fb0ff,0 0 60px 16px rgba(170,200,255,.8);}';
     document.head.appendChild(bst);

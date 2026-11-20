@@ -45,12 +45,14 @@
 
     // theme music, soft, looping, only while the launcher is in front (castle/theme.mp3, gitignored)
     var music = new Audio('castle/theme.mp3');
-    music.loop = true; music.volume = 0.35; window.castleMusic = music;   // CDP: castleMusic.paused / .volume
+    music.loop = true; music.volume = 0.6; window.castleMusic = music;   // CDP: castleMusic.paused / .volume
     function playIfFront() {
         if (document.hidden) music.pause();
         else { var p = music.play(); if (p && p.catch) p.catch(function () {}); }   // autoplay refused: the keydown below retries
     }
     document.addEventListener('visibilitychange', playIfFront);
+    // webOS sometimes pauses it on its own (seen once right after a reload, page still in front): pick it back up
+    music.addEventListener('pause', function () { if (!document.hidden) setTimeout(playIfFront, 1500); });
     document.addEventListener('keydown', function () { if (music.paused && !document.hidden) playIfFront(); }, true);
     playIfFront();
     document.body.style.background = '#000';
